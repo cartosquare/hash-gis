@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+<style>body{margin:0;padding:0}#m{position:absolute;top:0;bottom:;0;width:100%;height:100%}</style>
+<body><div id='m'></div></body>
+<script>var bo=L.latLngBounds({{bo}}),m=L.map("m").fitBounds(bo);{{ba}}&&L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"Basemap © OpenStreetMap contributors",id:"bm",tileSize:256}).addTo(m),L.tileLayer("http://localhost:8080/{{m}}/{z}/{x}/{y}.png",{attribution:'Tiles created and served by <a href="https://gitlab.com/spadarian/map-engine">MapEngine</a>',id:"mv",tileSize:256,bounds:bo.pad(-.1)}).addTo(m);</script>
+</html>
