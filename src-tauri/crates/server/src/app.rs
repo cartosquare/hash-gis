@@ -5,6 +5,8 @@ use crate::{
 
 use map_engine::vector::Vector;
 use tide::{Request, Response, Server, StatusCode};
+use http_types::headers::HeaderValue;
+use tide::security::{CorsMiddleware, Origin};
 
 pub async fn run(
     config: String,
@@ -15,7 +17,13 @@ pub async fn run(
 ) -> tide::Result<()> {
     Vector::mapnik_register(plugin_dir, font_dir);
 
-    let app = create_app(&config).await;
+    let cors = CorsMiddleware::new()
+    .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
+    .allow_origin(Origin::from("*"))
+    .allow_credentials(false);
+
+    let mut app = create_app(&config).await;
+    app.with(cors);
     app.listen(format!("{}:{}", host, port)).await?;
 
     Ok(())

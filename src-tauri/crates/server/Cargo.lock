@@ -1139,6 +1139,7 @@ dependencies = [
  "async-std",
  "clap 3.2.25",
  "dotenv",
+ "http-types",
  "log",
  "map-engine",
  "pretty_env_logger",

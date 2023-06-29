@@ -2,6 +2,7 @@ use crate::{mapsettings::MapSettings, style::Style};
 use map_engine::{
     cmap::{ColourDefinition, Composite},
     errors::MapEngineError,
+    gdal::spatial_ref::{CoordTransform, SpatialRef},
     gdal::Dataset,
     raster::Raster,
     vector::Vector,
@@ -146,6 +147,17 @@ impl State {
             let spatial_units = spatial_ref.linear_units_name()?;
             map.spatial_units = Some(spatial_units);
 
+            // bounds
+            let minx = geo.geo[2];
+            let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
+            let maxy = geo.geo[5];
+            let miny = geo.geo[5] + map.extent.unwrap().height as f64 * geo.geo[4];
+            println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+
+            let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+            let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
+            map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+
             State::validate_no_data_values(&src, &mut map)?;
             State::validate_bands(&map)?;
 
@@ -192,6 +204,17 @@ impl State {
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
 
+        // bounds
+        let minx = geo.geo[2];
+        let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
+        let maxy = geo.geo[5];
+        let miny = geo.geo[5] + map.extent.unwrap().height as f64 * geo.geo[4];
+        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+
+        let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
+        map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+
         State::validate_no_data_values(&src, map)?;
         State::validate_bands(&map)?;
 
@@ -199,7 +222,10 @@ impl State {
 
         let name = map.name.clone();
         let style_gradient = map.to_composite();
-        self.styles.write().unwrap().insert(name.clone(), style_gradient);
+        self.styles
+            .write()
+            .unwrap()
+            .insert(name.clone(), style_gradient);
         self.maps.write().unwrap().insert(name.clone(), map.clone());
         self.rasters.write().unwrap().insert(name.clone(), raster);
 
@@ -264,7 +290,6 @@ impl State {
             )));
         }
     }
-
 
     pub fn get_style(&self, map_name: &str) -> Result<Composite, MapEngineError> {
         if self.maps.read().unwrap().contains_key(map_name) {

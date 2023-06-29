@@ -24,6 +24,8 @@ pub struct MapSettings {
     pub spatial_ref_code: Option<i32>,
     /// Spatial units
     pub spatial_units: Option<String>,
+    /// wgs84 bounds
+    pub bounds: Option<[f64; 4]>,
 }
 
 impl MapSettings {

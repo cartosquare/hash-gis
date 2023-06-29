@@ -539,7 +539,7 @@ mod test {
         let win = Window::new(2048, 2048, 4096, 4096);
         let tile_bounds_xy = win.bounds(&geo);
 
-        band.set_no_data_value(2f64).unwrap();
+        band.set_no_data_value(Some(2f64)).unwrap();
         // Setting the return type to `Array2<f32>` makes the generic algorithm
         // return the expected type.
         let arr: Array2<f32> = try_boundless(
