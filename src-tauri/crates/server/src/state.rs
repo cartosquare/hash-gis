@@ -4,6 +4,7 @@ use map_engine::{
     errors::MapEngineError,
     gdal::Dataset,
     raster::Raster,
+    vector::Vector,
     windows::Window,
 };
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
+use uuid::Uuid;
 
 /// The shared application state.
 #[derive(Clone, Debug)]
@@ -19,6 +21,9 @@ pub struct State {
     pub maps: Arc<RwLock<HashMap<String, MapSettings>>>,
     pub rasters: Arc<RwLock<HashMap<String, Raster>>>,
     pub styles: Arc<RwLock<HashMap<String, Composite>>>,
+
+    // mapnik maps
+    pub vectors: Arc<RwLock<HashMap<String, Vector>>>,
 }
 
 impl State {
@@ -28,6 +33,10 @@ impl State {
     ///
     /// * `conf_path` - Path to the config file.
     pub fn from_file(conf_path: &str) -> Result<Self, MapEngineError> {
+        if conf_path == "" {
+            return State::init_state(vec![]);
+        }
+
         let path = Path::new(conf_path);
         let file = File::open(&path)?;
         let reader = BufReader::new(file);
@@ -115,6 +124,7 @@ impl State {
         let mut maps = HashMap::new();
         let mut rasters = HashMap::new();
         let mut styles = HashMap::new();
+        let vectors = HashMap::new();
         for mut map in settings.into_iter() {
             let path = Path::new(&map.path);
             let src = Dataset::open(path)?;
@@ -152,11 +162,16 @@ impl State {
             maps: Arc::new(RwLock::new(maps)),
             rasters: Arc::new(RwLock::new(rasters)),
             styles: Arc::new(RwLock::new(styles)),
+            vectors: Arc::new(RwLock::new(vectors)),
         })
     }
 
     pub fn add_map(&self, map_setting: MapSettings) -> Result<MapSettings, MapEngineError> {
         let map: &mut MapSettings = &mut map_setting.clone();
+        if map.name == "" {
+            map.name = Uuid::new_v4().to_string()
+        }
+
         let path = Path::new(&map.path);
         let src = Dataset::open(path)?;
         if map.extent.is_none() {
@@ -189,6 +204,14 @@ impl State {
         self.rasters.write().unwrap().insert(name.clone(), raster);
 
         Ok(map.clone())
+    }
+
+    pub fn add_map_vector(&self, xml: String) -> Result<String, MapEngineError> {
+        let v = Vector::from(xml)?;
+        let name = v.name.clone();
+        self.vectors.write().unwrap().insert(name.clone(), v);
+
+        Ok(name)
     }
 
     pub fn get_map(&self, map_name: &str) -> Result<MapSettings, MapEngineError> {
@@ -224,6 +247,24 @@ impl State {
             )));
         }
     }
+
+    pub fn get_vector(&self, map_name: &str) -> Result<Vector, MapEngineError> {
+        if self.vectors.read().unwrap().contains_key(map_name) {
+            Ok(self
+                .vectors
+                .read()
+                .unwrap()
+                .get(map_name)
+                .expect("State does not contain the raster")
+                .clone())
+        } else {
+            return Err(MapEngineError::Msg(format!(
+                "The raster {:?} does not exist",
+                map_name
+            )));
+        }
+    }
+
 
     pub fn get_style(&self, map_name: &str) -> Result<Composite, MapEngineError> {
         if self.maps.read().unwrap().contains_key(map_name) {

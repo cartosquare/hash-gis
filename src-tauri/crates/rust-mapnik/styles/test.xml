@@ -1,0 +1,33 @@
+<Map>
+  <Style name="raster">
+    <Rule>
+      <RasterSymbolizer/>
+    </Rule>
+  </Style>
+  <Style name="elevation">
+  <Rule>
+    <RasterSymbolizer>
+      <RasterColorizer default-mode="linear" default-color="white" epsilon="0.001">
+        <stop color="blue"        value = "0"  />
+        <stop color="red"         value = "1000"   mode = "discrete" />
+        <stop color="yellow"      value = "2000"      />
+        <stop                     value = "3000"      />
+        <stop color="red"         value = "4000"     />
+        <stop color="green"       value = "5000"     />
+        <stop color="black"       value = "8000"     mode = "exact"    />
+        <stop color="indigo"      value = "10000"    />
+      </RasterColorizer>
+    </RasterSymbolizer>
+  </Rule>
+</Style>
+
+  <Layer name="world">
+    <StyleName>elevation</StyleName>
+    <Datasource>
+      <!-- <Parameter name="file">D:\Mirror\data\sampledata\1m_4bands_16bit_2k_2k_planet_analytic.tif</Parameter> -->
+      <Parameter name="file">D:\Mirror\data\sampledata\test-4326-16bit.tif</Parameter>
+      <Parameter name="type">gdal</Parameter>
+      <Parameter name="band">1</Parameter>
+    </Datasource>
+  </Layer>
+</Map>

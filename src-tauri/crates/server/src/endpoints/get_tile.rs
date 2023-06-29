@@ -1,7 +1,7 @@
 use crate::state::State;
 use map_engine::{png::EMPTY_PNG, raster::RawPixels, tiles::Tile};
 use std::convert::Into;
-use tide::{http::mime, Request, Response, StatusCode};
+use tide::{http::mime, Request, Response, StatusCode, log::info};
 
 /// Generate a tile given a XYZ URL.
 pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> {
@@ -47,6 +47,22 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
         .body(styled.into_png().expect("Could not create PNG"));
     Ok(response)
 }
+
+pub async fn get_tile_vector(req: Request<State>) -> tide::Result<impl Into<Response>> {
+    let (map_name, z, x, y, ext) = get_params(&req).await?;
+    let mut tile = Tile::new(x, y, z);
+    if let Err(e) = tile.set_extension(ext) {
+        return Ok(Response::builder(StatusCode::NotImplemented).body(e.to_string()));
+    };
+
+    let v = req.state().get_vector(map_name).unwrap();
+    let data = v.tile(&tile)?;
+    let response = Response::builder(StatusCode::Ok)
+        .content_type(mime::PNG)
+        .body(data);
+    Ok(response)
+}
+
 
 pub async fn get_params(req: &Request<State>) -> tide::Result<(&str, u32, u32, u32, &str)> {
     let map_name = req.param("map_name")?;

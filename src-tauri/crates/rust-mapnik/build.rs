@@ -7,7 +7,7 @@ fn main() {
     println!("cargo:rustc-link-lib=libmapnik");
     println!("cargo:rustc-link-lib=libmapnik_c");
 
-    println!("cargo:rustc-link-search=./mapnik/{}", env::consts::OS);
+    println!("cargo:rustc-link-search=D:/atlas/code/hash-gis/src-tauri/crates/rust-mapnik/mapnik/{}", env::consts::OS);
     println!("cargo:rustc-link-search=D:/Mirror/vcpkg/installed/x64-windows/lib");
 
     // Tell cargo to invalidate the built crate whenever the wrapper changes

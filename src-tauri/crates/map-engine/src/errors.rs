@@ -1,8 +1,10 @@
 //! Library errors (using [`thiserror`]).
 use gdal::errors::GdalError;
 use ndarray::ShapeError;
+use rust_mapnik::errors::MapnikError;
 use png::EncodingError;
 use std::num::ParseIntError;
+use quick_xml::de::DeError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -25,4 +27,8 @@ pub enum MapEngineError {
     ShapeError(#[from] ShapeError),
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
+    #[error(transparent)]
+    MapnikError(#[from] MapnikError),
+    #[error(transparent)]
+    DeError(#[from] DeError),
 }

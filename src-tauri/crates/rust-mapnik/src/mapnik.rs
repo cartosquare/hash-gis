@@ -6,15 +6,20 @@ include!("../bindings.rs");
 use crate::errors::MapnikError;
 use std::ffi::CStr;
 use std::ffi::CString;
-
+ 
+#[derive(Debug)]
 pub struct MapnikMap {
     pub map: *mut mapnik_map_t,
 }
 
 impl MapnikMap {
     fn check_error(&self) -> Result<(), MapnikError> {
+        MapnikMap::check_error_(self.map)
+    }
+
+    fn check_error_(map: *mut mapnik_map_t) -> Result<(), MapnikError> {
         unsafe {
-            let err = mapnik_map_last_error(self.map);
+            let err = mapnik_map_last_error(map);
             if !err.is_null() {
                 let c_str: &CStr = CStr::from_ptr(err);
                 let str_slice: &str = c_str.to_str().unwrap();
@@ -25,26 +30,27 @@ impl MapnikMap {
         }
     }
 
-    pub fn new(width: u32, height: u32, style: String) -> Result<Self, MapnikError> {
+    pub fn new(width: usize, height: usize, style: String) -> Result<Self, MapnikError> {
         unsafe {
-            let map = mapnik_map(width, height);
-            let err = mapnik_map_last_error(map);
-            if !err.is_null() {
-                println!("create map fail: {:?}", err);
-                return Err(MapnikError::Msg(String::from("Create map fail")));
-            } else {
-                println!("create map success");
-            }
+            let map = mapnik_map(width as u32, height as u32);
+            MapnikMap::check_error_(map)?; 
 
             let xml = CString::new(style).unwrap();
             mapnik_map_load(map, xml.as_ptr());
-            let err = mapnik_map_last_error(map);
-            if !err.is_null() {
-                println!("load map fail: {:?}", err);
-                return Err(MapnikError::Msg(String::from("Load map fail")));
-            } else {
-                println!("load map success");
-            }
+            MapnikMap::check_error_(map)?; 
+
+            Ok(Self { map })
+        }
+    }
+
+    pub fn from_string(width: usize, height: usize, style: String) -> Result<Self, MapnikError> {
+        unsafe {
+            let map = mapnik_map(width as u32, height as u32);
+            MapnikMap::check_error_(map)?; 
+
+            let xml = CString::new(style).unwrap();
+            mapnik_map_load_from_string(map, xml.as_ptr());
+            MapnikMap::check_error_(map)?; 
 
             Ok(Self { map })
         }
@@ -145,11 +151,15 @@ mod tests {
                 println!("create map success");
             }
 
-            let xml = CString::new("./styles/test.xml").unwrap();
+            let xml = CString::new("D:\\atlas\\code\\hash-gis\\src-tauri\\crates\\rust-mapnik\\styles\\vector.xml").unwrap();
             mapnik_map_load(map, xml.as_ptr());
             let err = mapnik_map_last_error(map);
             if !err.is_null() {
-                println!("load map fail: {:?}", err);
+                let c_str: &CStr = CStr::from_ptr(err);
+                let str_slice: &str = c_str.to_str().unwrap();
+                let str_buf: String = str_slice.to_owned();
+
+                println!("load map fail: {}", str_buf);
             } else {
                 println!("load map success");
             }

@@ -1,0 +1,16 @@
+<Map srs="EPSG:3857">
+  <Style name="My Style">
+    <Rule>
+      <PolygonSymbolizer fill="#ff0000" />
+      <LineSymbolizer stroke="rgb(50%,50%,50%)" stroke-width="0.1" />
+    </Rule>
+  </Style>
+  <Layer name="world" srs="EPSG:4326">
+    <StyleName>My Style</StyleName>
+    <Datasource>
+      <Parameter name="file">D:\ne_10m_admin_0_countries\ne_10m_admin_0_countries.shp</Parameter>
+      <Parameter name="layer_by_index">0</Parameter>
+      <Parameter name="type">ogr</Parameter>
+    </Datasource>
+  </Layer>
+</Map>

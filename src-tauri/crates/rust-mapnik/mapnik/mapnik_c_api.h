@@ -68,6 +68,7 @@ MAPNIKCAPICALL const char * mapnik_map_get_srs(mapnik_map_t * m);
 MAPNIKCAPICALL int mapnik_map_set_srs(mapnik_map_t * m, const char* srs);
 
 MAPNIKCAPICALL int mapnik_map_load(mapnik_map_t * m, const char* stylesheet);
+MAPNIKCAPICALL int mapnik_map_load_from_string(mapnik_map_t * m, const char* stylesheet);
 
 MAPNIKCAPICALL int mapnik_map_zoom_all(mapnik_map_t * m);
 

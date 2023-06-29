@@ -123,31 +123,23 @@ When you launch the tile server you should be able to request individual tiles u
 
 ![A screenshot of the map previewer generated with MapEngine](https://gitlab.com/spadarian/map_engine/uploads/01b0e623d290774d218460483d7620aa/image.png)
 */
-#[macro_use]
-extern crate log;
+// #[macro_use]
+// extern crate log;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
-mod endpoints;
-mod mapsettings;
-mod state;
-mod style;
-
-use crate::{
-    endpoints::{get_tile, preview, add_map},
-    state::State,
-};
+use map_engine_server::app::run;
 use clap::Parser;
 use dotenv::dotenv;
 use std::env;
-use tide::{Request, Response, Server, StatusCode};
 
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
 struct Args {
     /// Path to config file
     #[clap(short, long)]
+    #[clap(default_value = "")]
     config: String,
 }
 
@@ -161,25 +153,14 @@ async fn main() -> tide::Result<()> {
     let host = env::var("MAP_ENGINE_HOST").unwrap_or_else(|_| String::from("127.0.0.1"));
     let port = env::var("MAP_ENGINE_PORT").unwrap_or_else(|_| String::from("8080"));
 
-    let app = create_app(&args.config).await;
-    app.listen(format!("{}:{}", host, port)).await?;
+    run(
+        args.config,
+        host,
+        port,
+        env::var("MAPNIK_PLUGIN_DIR").unwrap(),
+        env::var("MAPNIK_FONT_DIR").unwrap(),
+    )
+    .await?;
 
     Ok(())
-}
-
-async fn create_app(conf_path: &str) -> Server<State> {
-    let state = State::from_file(conf_path).unwrap();
-    let mut app = tide::with_state(state);
-
-    app.at("/favicon.ico").get(favicon);
-    app.at("/:map_name").get(preview);
-    app.at("/:map_name/").get(preview);
-    app.at("/:map_name/:z/:x/:y").get(get_tile);
-    app.at("/map").post(add_map);
-
-    app
-}
-
-async fn favicon(_: Request<State>) -> tide::Result<impl Into<Response>> {
-    Ok(Response::builder(StatusCode::NotFound))
 }

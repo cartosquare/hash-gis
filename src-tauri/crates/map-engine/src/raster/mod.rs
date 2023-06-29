@@ -12,6 +12,7 @@ use gdal::{
     raster::{GdalType, RasterBand, ResampleAlg},
     spatial_ref::SpatialRef,
     Dataset,
+    DriverManager,
 };
 use ndarray::{s, Array, Array2, Array3};
 use num_traits::{Num, NumCast};
@@ -204,7 +205,8 @@ where
     let height = shape[0];
     let width = shape[1];
 
-    let driver = gdal::Driver::get("MEM")?;
+    // let driver = gdal::Driver::get("MEM")?;
+    let driver = DriverManager::get_driver_by_name("MEM")?;
     // let driver = gdal::Driver::get("GTiff")?;
 
     let mut dataset = driver
