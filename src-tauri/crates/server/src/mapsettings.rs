@@ -18,6 +18,8 @@ pub struct MapSettings {
     pub no_data_value: Option<Vec<f64>>,
     /// Style definition
     pub style: Option<Style>,
+    /// Style definition for vector data
+    pub xml: Option<String>,
     /// GDAL driver used to open the file
     pub driver_name: Option<String>,
     /// Spatial reference system

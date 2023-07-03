@@ -63,10 +63,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 800,
         "resizable": true,
-        "title": "hash-gis",
-        "width": 800
+        "title": "HASH(GIS)",
+        "width": 1200
       }
     ]
   }

@@ -1,11 +1,12 @@
 use sr::{AlgorithmType, SenseRemote};
 use tauri::Window;
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PredictStatus {
     stage: String,
     progress: f64,
     fail: bool,
+    params: Option<PredictParams>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -23,6 +24,8 @@ pub fn predict(window: Window, params: PredictParams) {
     println!("params: {:?}", params);
 
     let w = window.clone();
+    let p = params.clone();
+
     std::thread::spawn(move || {
         let at = match params.algorithm_type.as_str() {
             "seg-post" => AlgorithmType::SEG_POST,
@@ -45,7 +48,7 @@ pub fn predict(window: Window, params: PredictParams) {
             params.options,
             move |progress, stage: String| {
                 window
-                    .emit("predict-status", PredictStatus { progress, stage, fail: false })
+                    .emit("predict-status", PredictStatus { progress, stage, fail: false, params: None })
                     .unwrap();
             },
             // String::from("D:\\windows-common-libs-v4.1.x\\4bands-testoutput.shp"),
@@ -57,12 +60,14 @@ pub fn predict(window: Window, params: PredictParams) {
                 progress: -1.0,
                 stage: "结束".into(),
                 fail: true,
+                params: Some(p),
             })
         } else {
             w.emit("predict-status", PredictStatus{
                 progress: 1.0,
                 stage: "结束".into(),
                 fail: false,
+                params: Some(p),
             })
         }
     });

@@ -4,6 +4,7 @@ use map_engine::{
     errors::MapEngineError,
     gdal::spatial_ref::{CoordTransform, SpatialRef},
     gdal::Dataset,
+    gdal::LayerAccess,
     raster::Raster,
     vector::Vector,
     windows::Window,
@@ -213,7 +214,14 @@ impl State {
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
         let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
-        map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+
+        let mut xs = [minx, maxx];
+        let mut ys = [maxy, miny];
+        let mut zs = [0.0f64; 2];
+        transform.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
+        // lat_min, long_min, lat_max, long_max
+        map.bounds = Some([xs[1], ys[0], xs[0], ys[1]]);
+        //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 
         State::validate_no_data_values(&src, map)?;
         State::validate_bands(&map)?;
@@ -232,12 +240,36 @@ impl State {
         Ok(map.clone())
     }
 
-    pub fn add_map_vector(&self, xml: String) -> Result<String, MapEngineError> {
-        let v = Vector::from(xml)?;
-        let name = v.name.clone();
-        self.vectors.write().unwrap().insert(name.clone(), v);
+    pub fn add_map_vector(&self, map_setting: MapSettings) -> Result<MapSettings, MapEngineError> {
+        let map: &mut MapSettings = &mut map_setting.clone();
 
-        Ok(name)
+        let v = Vector::from(map.xml.clone().unwrap())?;
+        map.name = v.name.clone();
+
+        let path = Path::new(&map.path);
+        let ds = Dataset::open(path)?;
+
+        let layer = ds.layer(0)?;
+        let spatial_ref = layer.spatial_ref().unwrap_or_else(|| SpatialRef::from_epsg(4326).unwrap());
+        let spatial_ref_code = spatial_ref.auth_code()?;
+        map.spatial_ref_code = Some(spatial_ref_code as i32);
+        let spatial_units = spatial_ref.linear_units_name()?;
+        map.spatial_units = Some(spatial_units);
+
+        let extent = layer.get_extent()?;
+        let minx = extent.MinX;
+        let maxx = extent.MaxX;
+        let maxy = extent.MaxY;
+        let miny = extent.MinY;
+
+        let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
+        map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+
+        self.maps.write().unwrap().insert(map.name.clone(), map.clone());
+        self.vectors.write().unwrap().insert(map.name.clone(), v);
+
+        Ok(map.clone())
     }
 
     pub fn get_map(&self, map_name: &str) -> Result<MapSettings, MapEngineError> {
@@ -275,7 +307,7 @@ impl State {
     }
 
     pub fn get_vector(&self, map_name: &str) -> Result<Vector, MapEngineError> {
-        if self.vectors.read().unwrap().contains_key(map_name) {
+        if self.maps.read().unwrap().contains_key(map_name) {
             Ok(self
                 .vectors
                 .read()

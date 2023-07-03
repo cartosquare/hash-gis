@@ -1,5 +1,5 @@
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Marker, useMap, FeatureGroup, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, FeatureGroup, Popup, LayersControl } from 'react-leaflet';
 import L, { LatLngExpression } from 'leaflet';
 
 L.Icon.Default.mergeOptions({
@@ -32,14 +32,21 @@ export default function Map({
 }) {
   return (
     <MapContainer className='flex grow' bounds={bounds}>
-      {
-        layers && layers.map((url, index) => (
-          <TileLayer
-            attribution='&copy; <a href="https://www.rs.sensetime.com/">SenseTime</a>'
-            url={url}
-          />
-        ))
-      }
+
+      <LayersControl position='topright'>
+
+        {
+          layers && layers.map((url, index) => (
+
+            <LayersControl.Overlay key={index} name={`${index}`} checked>
+              <TileLayer
+                attribution='&copy; <a href="https://www.rs.sensetime.com/">SenseTime</a>'
+                url={url}
+              />
+            </LayersControl.Overlay>
+          ))
+        }
+      </LayersControl>
       <BoundsView bounds={bounds} />
     </MapContainer>
   );

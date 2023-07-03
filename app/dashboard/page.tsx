@@ -17,6 +17,7 @@ import { listen } from '@tauri-apps/api/event';
 interface PredictStatus {
   stage: string,
   progress: number,
+  params: PredictParams,
 }
 
 type PredictParams = {
@@ -39,23 +40,52 @@ export default function Home() {
     router.push("/");
   }
 
-  const createMapLayer = async (filepath: string) => {
+  const createMapLayer = async (filepath: string, geoType: String) => {
+    let bodyData = "";
+    if (geoType == "vector") {
+      const style = `
+<Map srs="epsg:3857">
+	<Style name="My Style">
+		<Rule>
+			<PolygonSymbolizer fill="red" fill-opacity="1"/>
+			<LineSymbolizer stroke="blue" stroke-opacity="1" stroke-width="0.1"/>
+		</Rule>
+	</Style>
+	<Layer name="" srs="epsg:4326">
+		<StyleName>My Style</StyleName>
+		<Datasource>
+			<Parameter name="file">${filepath}</Parameter>
+			<Parameter name="layer_by_index">0</Parameter>
+			<Parameter name="type">ogr</Parameter>
+		</Datasource>
+	</Layer>
+</Map>
+    `
+      bodyData = JSON.stringify({
+        'name': "",
+        "path": filepath,
+        "xml": style,
+      });
+
+    } else {
+      bodyData = JSON.stringify({
+        'name': "",
+        "path": filepath,
+        "style": {
+          "colours": [
+            [0, 0, 0], [255, 255, 255]
+          ],
+          "bands": [1, 2, 3]
+        }
+      });
+    }
     try {
       const rawResponse = await fetch(`http://localhost:8080/map`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          'name': "",
-          "path": filepath,
-          "style": {
-            "colours": [
-              [0, 0, 0], [255, 255, 255]
-            ],
-            "bands": [1, 2, 3]
-          }
-        })
+        body: bodyData,
       });
       if (rawResponse.status != 200) {
         //toast.error(`请求失败：${rawResponse.status}`);
@@ -63,11 +93,11 @@ export default function Home() {
       } else {
         const response = (await rawResponse.json());
         console.log(response)
-        setLayers([`http://localhost:8080/${response.name}/{z}/{x}/{y}.png`]);
-        const b = new L.LatLngBounds(L.latLng(response.bounds[0], response.bounds[1]), L.latLng(response.bounds[2], response.bounds[3]))
+        setLayers([...layers, `http://localhost:8080/${response.name}/{z}/{x}/{y}.png`]);
+        // const b = new L.LatLngBounds(L.latLng(response.bounds[0], response.bounds[1]), L.latLng(response.bounds[2], response.bounds[3]))
+        const b = new L.LatLngBounds(L.latLng(response.bounds[1], response.bounds[0]), L.latLng(response.bounds[3], response.bounds[2]))
         console.log(b)
-        setBounds(b
-        );
+        setBounds(b);
       }
     } catch (error) {
       console.log(error);
@@ -79,9 +109,11 @@ export default function Home() {
   const openInputFile = async () => {
     const file = await open();
     setInputFile(file as string);
+    setLayers([]);
+    setOutputFile("");
 
     // create map view
-    await createMapLayer(file as string);
+    await createMapLayer(file as string, "raster");
   }
 
   const saveOutputFile = async () => {
@@ -103,7 +135,7 @@ export default function Home() {
 
   useEffect(() => {
     const createListenEvent = async () => {
-      const unlistenPredict = await listen<PredictStatus>('predict-status', (event) => {
+      const unlistenPredict = await listen<PredictStatus>('predict-status', async (event) => {
         console.log('receive event', event.payload);
         setPredictStatus(event.payload as PredictStatus);
       });
@@ -114,6 +146,16 @@ export default function Home() {
     return () => {
     }
   }, [])
+
+  useEffect(() => {
+    if (!predictStatus) {
+      return
+    }
+
+    if (predictStatus.stage == "结束" && predictStatus.progress != -1) {
+      createMapLayer(predictStatus.params.outputPath, "vector");
+    }
+  }, [predictStatus])
 
   return (
     <main className="flex min-h-screen flex-col h-full items-center justify-between bg-base-300">

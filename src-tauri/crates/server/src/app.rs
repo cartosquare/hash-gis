@@ -1,5 +1,5 @@
 use crate::{
-    endpoints::{add_map, add_map_vector, get_tile, get_tile_vector, preview},
+    endpoints::{add_map, get_tile, preview},
     state::State,
 };
 
@@ -38,10 +38,6 @@ pub async fn create_app(conf_path: &str) -> Server<State> {
     app.at("/:map_name/").get(preview);
     app.at("/:map_name/:z/:x/:y").get(get_tile);
     app.at("/map").post(add_map);
-
-    // vector
-    app.at("/vector/:map_name/:z/:x/:y").get(get_tile_vector);
-    app.at("/vector/map").post(add_map_vector);
 
     app
 }
