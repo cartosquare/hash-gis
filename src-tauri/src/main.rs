@@ -5,7 +5,11 @@ use map_engine_server::app::run;
 use futures::executor::block_on;
 use std::thread;
 
+mod rs;
+use rs::predict;
+
 fn main() {
+    // TODO: hard-code => env
     thread::spawn(move || {
         block_on(run(
             "".into(),
@@ -17,6 +21,7 @@ fn main() {
     });
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![predict])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -7,8 +7,7 @@ pub mod errors;
 
 use crate::errors::SenseRemoteError;
 use libffi::high::ClosureMut3;
-use std::ffi::c_void;
-use std::ffi::CString;
+use std::ffi::{c_void, CStr, CString};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,7 +21,8 @@ pub enum AlgorithmType {
 pub struct SenseRemote {}
 
 impl SenseRemote {
-    pub fn execute<F: FnMut(f64) + Send + Sync + 'static>(
+    pub fn execute<F: FnMut(f64, String) + Send + Sync + 'static>(
+    // pub fn execute<F: FnMut(f64, String) + 'static>(
         alg_type: AlgorithmType,
         model_path: String,
         data_sources: Vec<String>,
@@ -89,11 +89,11 @@ impl SenseRemote {
             // callback
             let closure: &'static mut _ = Box::leak(Box::new(
                 move |progress: f64,
-                      _msg: *const ::std::os::raw::c_char,
+                      msg: *const ::std::os::raw::c_char,
                       _userdata: *mut ::std::os::raw::c_void|
                       -> ::std::os::raw::c_int {
                     // println!("progress: {}", progress);
-                    callback(progress);
+                    callback(progress, CStr::from_ptr(msg).to_str().unwrap().to_owned());
                     1
                 },
             ));

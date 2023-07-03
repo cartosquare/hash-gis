@@ -6,10 +6,26 @@ import { useRouter } from 'next/navigation';
 import { open, save } from "@tauri-apps/api/dialog"
 import { useEffect, useState } from 'react';
 import L, { latLngBounds } from 'leaflet';
+import { invoke } from '@tauri-apps/api/tauri';
+import { listen } from '@tauri-apps/api/event';
 
 // const MapWithNoSSR = dynamic(() => import('../map'), {
 //   ssr: false,
 // });
+
+
+interface PredictStatus {
+  stage: string,
+  progress: number,
+}
+
+type PredictParams = {
+  algorithmType: string,
+  modelPath: string,
+  datasources: string[],
+  options: string[],
+  outputPath: string,
+}
 
 export default function Home() {
   const router = useRouter();
@@ -17,6 +33,7 @@ export default function Home() {
   const [outputFile, setOutputFile] = useState<string>("");
   const [layers, setLayers] = useState<string[]>([]);
   const [bounds, setBounds] = useState<L.LatLngBounds>();
+  const [predictStatus, setPredictStatus] = useState<PredictStatus>();
 
   const navigatorHome = () => {
     router.push("/");
@@ -71,6 +88,32 @@ export default function Home() {
     const file = await save();
     setOutputFile(file as string);
   }
+
+  const createPredictTask = () => {
+    invoke('predict', {
+      params: {
+        algorithmType: "seg-post",
+        modelPath: "D:\\atlas\\model\\sense-layers\\agri\\corn_rgbnir8bit_2m_221223.m",
+        datasources: [inputFile],
+        options: ["license_server=10.112.60.244:8181", "verbose=debug"],
+        outputPath: outputFile,
+      }
+    });
+  }
+
+  useEffect(() => {
+    const createListenEvent = async () => {
+      const unlistenPredict = await listen<PredictStatus>('predict-status', (event) => {
+        console.log('receive event', event.payload);
+        setPredictStatus(event.payload as PredictStatus);
+      });
+      return unlistenPredict;
+    }
+
+    const unlistenPredict = createListenEvent();
+    return () => {
+    }
+  }, [])
 
   return (
     <main className="flex min-h-screen flex-col h-full items-center justify-between bg-base-300">
@@ -157,6 +200,10 @@ export default function Home() {
 
           </div>
 
+          <div className='flex justify-end pr-6'>
+            <button onClick={createPredictTask} className='btn btn-primary w-32'>启动</button>
+          </div>
+
         </div>
 
 
@@ -166,6 +213,23 @@ export default function Home() {
           bounds={bounds}
         />
       </div>
+      {
+        predictStatus &&
+        <footer className="footer footer-center p-4 bg-base-300 text-base-content">
+          <div className='w-full'>
+            <div className='flex flex-row w-full justify-start'>
+
+              <div className='w-32'>
+                <p className="">{predictStatus.stage}</p>
+              </div>
+              <div className='w-full'>
+                <progress className="progress progress-primary" value={predictStatus.progress * 100} max="100"></progress>
+              </div>
+            </div>
+
+          </div>
+        </footer>
+      }
     </main>
   )
 }

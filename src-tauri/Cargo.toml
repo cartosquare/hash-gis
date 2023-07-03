@@ -19,6 +19,7 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.4.0", features = [ "dialog-save", "dialog-open"] }
 map-engine-server = { version = "0.1", path = "./crates/server" }
+sr = { version = "0.1", path = "./crates/sr" }
 futures = "0.3.28"
 
 [features]
