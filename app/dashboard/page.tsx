@@ -1,17 +1,20 @@
 "use client"
 
-// import dynamic from 'next/dynamic';
-import Map from '../map';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { open, save } from "@tauri-apps/api/dialog"
 import { useEffect, useState } from 'react';
 import L, { latLngBounds } from 'leaflet';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '../lib/tauri';
 import { listen } from '@tauri-apps/api/event';
+import { useModel } from '../context/model-context';
+import { Body, fetch, Response } from '@tauri-apps/api/http';
+import { MapSettings } from '../types';
+// import Map from '../map';
 
-// const MapWithNoSSR = dynamic(() => import('../map'), {
-//   ssr: false,
-// });
+const MapWithNoSSR = dynamic(() => import('../map'), {
+  ssr: false,
+});
 
 
 interface PredictStatus {
@@ -28,20 +31,35 @@ type PredictParams = {
   outputPath: string,
 }
 
+
 export default function Home() {
   const router = useRouter();
+  const { model, setModel } = useModel();
   const [inputFile, setInputFile] = useState<string>("");
   const [outputFile, setOutputFile] = useState<string>("");
-  const [layers, setLayers] = useState<string[]>([]);
-  const [bounds, setBounds] = useState<L.LatLngBounds>();
+  const [mapSettings, setMapSettings] = useState<MapSettings[]>([]);
   const [predictStatus, setPredictStatus] = useState<PredictStatus>();
 
   const navigatorHome = () => {
     router.push("/");
   }
 
+
   const createMapLayer = async (filepath: string, geoType: String) => {
-    let bodyData = "";
+    let bodyData: MapSettings = {
+      name: "",
+      path: filepath,
+      xml: null,
+      extent: null,
+      geotransform: null,
+      style: null,
+      no_data_value: null,
+      spatial_ref_code: null,
+      spatial_units: null,
+      driver_name: null,
+      bounds: null
+    };
+
     if (geoType == "vector") {
       const style = `
 <Map srs="epsg:3857">
@@ -61,43 +79,36 @@ export default function Home() {
 	</Layer>
 </Map>
     `
-      bodyData = JSON.stringify({
-        'name': "",
-        "path": filepath,
-        "xml": style,
-      });
+      bodyData.xml = style;
 
     } else {
-      bodyData = JSON.stringify({
-        'name': "",
-        "path": filepath,
-        "style": {
-          "colours": [
+      bodyData.style = {
+          colours: [
             [0, 0, 0], [255, 255, 255]
           ],
-          "bands": [1, 2, 3]
-        }
-      });
+          bands: [1, 2, 3],
+          name: null,
+          vmin: null,
+          vmax: null,
+        };
     }
+
     try {
-      const rawResponse = await fetch(`http://localhost:8080/map`, {
+      const rawResponse = await fetch<MapSettings>(`http://localhost:8080/map`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: bodyData,
+        body: Body.json(bodyData),
       });
       if (rawResponse.status != 200) {
-        //toast.error(`请求失败：${rawResponse.status}`);
-        console.log('error');
+        console.log('error', rawResponse);
       } else {
-        const response = (await rawResponse.json());
-        console.log(response)
-        setLayers([...layers, `http://localhost:8080/${response.name}/{z}/{x}/{y}.png`]);
-        // const b = new L.LatLngBounds(L.latLng(response.bounds[0], response.bounds[1]), L.latLng(response.bounds[2], response.bounds[3]))
-        const b = new L.LatLngBounds(L.latLng(response.bounds[1], response.bounds[0]), L.latLng(response.bounds[3], response.bounds[2]))
-        console.log(b)
-        setBounds(b);
+        const response = rawResponse.data;
+        if (response.bounds) {
+          // console.log(response);
+          setMapSettings([...mapSettings, response]);
+        }
       }
     } catch (error) {
       console.log(error);
@@ -109,7 +120,7 @@ export default function Home() {
   const openInputFile = async () => {
     const file = await open();
     setInputFile(file as string);
-    setLayers([]);
+    setMapSettings([]);
     setOutputFile("");
 
     // create map view
@@ -132,8 +143,8 @@ export default function Home() {
       }
     });
   }
-
   useEffect(() => {
+
     const createListenEvent = async () => {
       const unlistenPredict = await listen<PredictStatus>('predict-status', async (event) => {
         console.log('receive event', event.payload);
@@ -167,6 +178,8 @@ export default function Home() {
             <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" width="19" height="19"><path d="M8 1L1 7.5 8 14m5.5-13l-7 6.5 7 6.5" stroke="currentColor" strokeLinecap="square"></path></svg>
             返回
           </button>
+
+          {/* 必选参数 */}
           <div tabIndex={0} className="collapse collapse-open bg-base-200">
             <input type="checkbox" />
             <div className="collapse-title text-lg">
@@ -175,16 +188,29 @@ export default function Home() {
 
             <div className="flex flex-col collapse-content">
 
-              <div className='form-control'>
-                <label className='label cursor-pointer'>
-                  <span className="label-text w-24">输入</span>
-                  <div className='join'>
-                    <input type="text" value={inputFile} className="input join-item" readOnly />
-                    <button onClick={openInputFile} className='btn btn-neutral join-item'>选择..</button>
-                  </div>
+              {/* 批处理选项 */}
+              <div className="form-control">
+                <label className="label cursor-pointer">
+                  <span className="label-text">批处理</span>
+                  <input type="checkbox" className="toggle toggle-primary" />
                 </label>
               </div>
+              {/* 输入 */}
+              {
+                model && Array.from(Array(model.input_files).keys()).map((val) => (
+                  <div className='form-control' key={val}>
+                    <label className='label cursor-pointer'>
+                      <span className="label-text w-24">输入 {model.input_files > 1 ? val + 1 : ''}</span>
+                      <div className='join'>
+                        <input type="text" value={inputFile} className="input join-item" readOnly />
+                        <button onClick={openInputFile} className='btn btn-neutral join-item'>选择..</button>
+                      </div>
+                    </label>
+                  </div>
+                ))
+              }
 
+              {/* 输出 */}
               <div className='form-control'>
                 <label className='label cursor-pointer'>
                   <span className="label-text w-24">输出</span>
@@ -196,7 +222,7 @@ export default function Home() {
                 </label>
               </div>
 
-
+              {/* 开启GPU */}
               <div className="form-control">
                 <label className="label cursor-pointer">
                   <span className="label-text">开启GPU</span>
@@ -204,19 +230,22 @@ export default function Home() {
                 </label>
               </div>
 
+              {/* 选择GPU */}
               <div className="form-control">
                 <label className="label cursor-pointer">
                   <span className="label-text">GPU</span>
-                  <select className="select select-bordered w-full max-w-xs">
-                    <option disabled selected>Nvidia 1080Ti</option>
-                    <option>Nvidia V100</option>
-                    <option>Nvidia T4</option>
+                  <select defaultValue="0" className="select select-bordered w-full max-w-xs">
+                    <option value="0">Nvidia 1080Ti</option>
+                    <option value="1">Nvidia V100</option>
+                    <option value="2">Nvidia T4</option>
                   </select>
                 </label>
               </div>
 
             </div>
           </div>
+
+          {/* 高级参数 */}
           <div tabIndex={1} className="collapse bg-base-200">
             <input type="checkbox" />
             {/* <div className="collapse-title text-xl font-medium"> */}
@@ -225,12 +254,35 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col collapse-content">
-              <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text w-24">概率阈值</span>
-                  <input type="range" min={0} max={100} defaultValue={50} className="range" />
-                </label>
-              </div>
+              {
+                model && model.options.map((option, index) => (
+                  <div key={index} className="form-control">
+                    <label className="label cursor-pointer">
+                      <span className="label-text w-24">{option.label}</span>
+                      {
+                        option.input_type == "range" &&
+                        <input type="range" min={option.min} max={option.max} defaultValue={option.value} className={`range ${option.style}`} />
+                      }
+                      {
+                        option.input_type == "select" &&
+                        <select defaultValue="0" className={`select select-bordered w-full max-w-xs ${option.style}`}>
+                          {
+                            option.choices && option.choices.map((choice, index) => (
+                              // index == 0 ? <option selected key={index}>{choice}</option> : <option key={index}>{choice}</option>
+                              <option key={index} value={index}>{choice}</option>
+                            )
+                            )
+                          }
+                        </select>
+                      }
+                      {
+                        option.input_type == "text" &&
+                        <input type="text" placeholder="" className="input w-full max-w-xs" />
+                      }
+                    </label>
+                  </div>
+                ))
+              }
 
               <div className="form-control">
                 <label className="label cursor-pointer">
@@ -248,11 +300,8 @@ export default function Home() {
 
         </div>
 
-
-        {/* <MapWithNoSSR /> */}
-        <Map
-          layers={layers}
-          bounds={bounds}
+        <MapWithNoSSR
+          settings={mapSettings}
         />
       </div>
       {

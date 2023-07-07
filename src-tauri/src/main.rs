@@ -6,7 +6,7 @@ use futures::executor::block_on;
 use std::thread;
 
 mod rs;
-use rs::predict;
+use rs::{app_config, predict};
 
 fn main() {
     // TODO: hard-code => env
@@ -21,7 +21,7 @@ fn main() {
     });
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![predict])
+        .invoke_handler(tauri::generate_handler![app_config, predict])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -213,14 +213,17 @@ impl State {
         // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        target_spatial_ref.set_axis_mapping_strategy(0);
+
         let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
 
         let mut xs = [minx, maxx];
         let mut ys = [maxy, miny];
         let mut zs = [0.0f64; 2];
         transform.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
+        // println!("after transform: {}, {}, {}, {}", ys[1], xs[0], ys[0], xs[1]);
         // lat_min, long_min, lat_max, long_max
-        map.bounds = Some([xs[1], ys[0], xs[0], ys[1]]);
+        map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 
         State::validate_no_data_values(&src, map)?;

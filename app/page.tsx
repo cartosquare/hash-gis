@@ -1,31 +1,56 @@
 "use client"
 
+import { invoke } from './lib/tauri';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import ModelCard from './components/model-carad';
+import { useModel } from './context/model-context';
+import { ModelConfig } from './types';
 
 export default function Home() {
   const router = useRouter();
+  const { model, setModel } = useModel();
+  const [appConfig, setAppConfig] = useState<ModelConfig>();
 
-  const navigate_dashboard = () => {
+  const navigate_dashboard = (modelIndex: number) => {
+    if (appConfig?.models[modelIndex]) {
+      setModel(appConfig.models[modelIndex]);
+    }
+
     router.push('/dashboard');
   }
 
+  useEffect(() => {
+    invoke("app_config")
+      .then((config) => {
+        setAppConfig(config as ModelConfig);
+      })
+      .catch((msg) => {
+        console.log("error: ", msg);
+      });
+  }, [])
+
   return (
     <main className="flex min-h-screen flex-col h-full items-center justify-between bg-base-300">
-      <div className='flex w-full grow bg-base-300 p-4'>
-        <div className="grid grid-cols-4 gap-4">
-          <a
-            className='hover:cursor-pointer hover:drop-shadow-lg'
-            onClick={navigate_dashboard}
-          >
-            <ModelCard
-              img='./building.png'
-              title='建筑提取'
-              description='建筑物检测产品基于商汤自研深度学习遥感解译算法，单景或批量输入最佳分辨率为0.3米或2米的8bit、RGB、三波段的遥感影像，自动进行shp格式建筑物矢量轮廓提取。'
-              tags={["3波段", "亚米影像"]}
-              isNew={true}
-            />
-          </a>
+      <div className='flex w-full grow bg-base-300 p-4 justify-center'>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {
+            appConfig && appConfig.models.map((model, index) => (
+
+              <a key={index}
+                className='hover:cursor-pointer hover:drop-shadow-lg'
+                onClick={() => { navigate_dashboard(index) }}
+              >
+                <ModelCard
+                  img={model.icon}
+                  title={model.name}
+                  description={model.description}
+                  tags={model.tags}
+                  isNew={true}
+                />
+              </a>
+            ))
+          }
         </div>
       </div>
     </main>

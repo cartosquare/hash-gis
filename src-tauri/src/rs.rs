@@ -1,5 +1,8 @@
+use std::fs;
+
 use sr::{AlgorithmType, SenseRemote};
 use tauri::Window;
+use tauri::api::path::app_config_dir;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PredictStatus {
@@ -71,4 +74,60 @@ pub fn predict(window: Window, params: PredictParams) {
             })
         }
     });
+}
+
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ModelOption {
+    pub input_type: String,
+    pub name: String,
+    pub label: String,
+    pub choices: Option<Vec<String>>,
+    pub style: Option<Vec<String>>,
+    pub min: Option<u32>,
+    pub max: Option<u32>,
+    pub value: Option<u32>,
+    pub scale: Option<f64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct Model {
+    pub name: String,
+    pub icon: String,
+    pub model_path: String,
+    pub input_files: u32,
+    pub input_bands: u32,
+    pub input_range: Vec<f64>,
+    pub post_type: String,
+    pub description: String,
+    pub tags: Vec<String>,
+    pub options: Vec<ModelOption>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AppConfig {
+    pub license_server: String,
+    pub models: Vec<Model>,
+}
+
+
+//#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
+pub fn app_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
+    let config_path = app_handle.path_resolver().resolve_resource("app_config.toml");
+    if config_path.is_none() {
+        return Err(String::from("resolve app_config.toml resource fail!"));
+    }
+
+    let contents = fs::read_to_string(&config_path.unwrap());
+    if contents.is_err() {
+        return Err(String::from("read app_config.toml fail!"));
+    }
+
+    let data = toml::from_str(&contents.unwrap());
+    if data.is_err() {
+        return Err(String::from("parse app_config.toml fail!"));
+    }
+
+    Ok(data.unwrap())
 }

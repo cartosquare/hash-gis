@@ -19,6 +19,14 @@
         "message": false, 
         "open": true,
         "save": true
+      },
+      "fs": {
+        "scope": ["$RESOURCE/*"]
+      },
+      "http": {
+        "all": false,
+        "request": true,
+        "scope": ["http://localhost:8080/*"]
       }
     },
     "bundle": {
@@ -36,7 +44,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "com.hash.gis",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -45,7 +53,9 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
+      "resources": [
+        "app_config.toml"
+      ],
       "shortDescription": "",
       "targets": "all",
       "windows": {
