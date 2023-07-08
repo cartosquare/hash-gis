@@ -44,6 +44,7 @@ export default function Home() {
   const [gpuList, setGpuList] = useState<string[]>([]);
   const [mapSettings, setMapSettings] = useState<MapSettings[]>([]);
   const [predictStatus, setPredictStatus] = useState<PredictStatus>();
+  const [predicting, setPredicting] = useState<boolean>(false);
 
   const [predictOptions, setPredictOptions] = useState<PredictOptions>(new Map());
 
@@ -227,11 +228,11 @@ export default function Home() {
       const file = await save({
         filters: [{
           name: 'Shapefile',
-          extensions: ['.shp']
+          extensions: ['shp']
         },
         {
           name: 'GeoJSON',
-          extensions: ['.geojson']
+          extensions: ['geojson']
         }
         ]
       });
@@ -246,6 +247,8 @@ export default function Home() {
   }
 
   const createPredictTask = () => {
+    setPredicting(true);
+
     invoke('predict', {
       // params: {
       //   algorithmType: "seg-post",
@@ -308,6 +311,9 @@ export default function Home() {
 
     if (predictStatus.stage == "结束" && predictStatus.progress != -1) {
       createMapLayer(predictStatus.params.outputPath, "vector");
+      setPredicting(false);
+    } else {
+      setPredicting(true);
     }
   }, [predictStatus])
 
@@ -316,7 +322,10 @@ export default function Home() {
       <div className='flex flex-row w-full grow bg-base-300 p-4'>
 
         <div className='flex flex-col gap-4'>
-          <button className='btn w-32' onClick={navigatorHome}>
+          <button
+            className='btn w-32'
+            disabled={predicting}
+            onClick={navigatorHome}>
 
             <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" width="19" height="19"><path d="M8 1L1 7.5 8 14m5.5-13l-7 6.5 7 6.5" stroke="currentColor" strokeLinecap="square"></path></svg>
             返回
@@ -345,8 +354,14 @@ export default function Home() {
                     <label className='label cursor-pointer'>
                       <span className="label-text w-24">输入 {model.input_files > 1 ? val + 1 : ''}</span>
                       <div className='join'>
-                        <input type="text" value={inputFile.length > 0 ? inputFile[val].length > max_text_length ? ".." + inputFile[val].slice(inputFile[val].length - max_text_length) : inputFile[val] : ''} className="input join-item" readOnly />
-                        <button onClick={() => { openInputFile(val) }} className='btn btn-neutral join-item'>选择..</button>
+                        <input type="text"
+                          value={inputFile[val]}
+                          className="input join-item"
+                          readOnly />
+                        <button
+                          onClick={() => { openInputFile(val) }}
+                          disabled={predicting}
+                          className='btn btn-neutral join-item'>选择..</button>
                       </div>
                     </label>
                   </div>
@@ -358,8 +373,13 @@ export default function Home() {
                 <label className='label cursor-pointer'>
                   <span className="label-text w-24">输出</span>
                   <div className='join'>
-                    <input type="text" value={outputFile ? outputFile.length > max_text_length ? ".." + outputFile.slice(outputFile.length - max_text_length) : outputFile : ''} className="input join-item" readOnly />
-                    <button onClick={saveOutputFile} className='btn btn-neutral join-item'>选择..</button>
+                    <input type="text"
+                      value={outputFile}
+                      className="input join-item" readOnly />
+                    <button
+                      onClick={saveOutputFile}
+                      disabled={predicting}
+                      className='btn btn-neutral join-item'>选择..</button>
                   </div>
 
                 </label>
@@ -372,6 +392,7 @@ export default function Home() {
                   <select
                     defaultValue="0"
                     onChange={(e) => { setDeviceId(parseInt(e.target.value)) }}
+                    disabled={predicting}
                     className="select select-bordered w-full max-w-xs">
                     <option value="0">CPU</option>
                     {
@@ -404,6 +425,7 @@ export default function Home() {
                         option.input_type == "range" && option.min != null && option.max != null &&
                         <input
                           type="range"
+                          disabled={predicting}
                           onChange={(e) => { setPredictOption(option, option.name, e.target.value) }}
                           min={option.min} max={option.max}
                           defaultValue={option.value ? option.value : option.min}
@@ -413,11 +435,11 @@ export default function Home() {
                         option.input_type == "select" &&
                         <select
                           onChange={(e) => { setPredictOption(option, option.name, e.target.value) }}
+                          disabled={predicting}
                           defaultValue={option.value ? option.value : 0}
                           className={`select select-bordered w-full max-w-xs ${option.style}`}>
                           {
                             option.choices && option.choices.map((choice, index) => (
-                              // index == 0 ? <option selected key={index}>{choice}</option> : <option key={index}>{choice}</option>
                               <option key={index} value={index}>{choice}</option>
                             )
                             )
@@ -428,6 +450,7 @@ export default function Home() {
                         option.input_type == "text" &&
                         <input
                           type="text"
+                          disabled={predicting}
                           onChange={(e) => { setPredictOption(option, option.name, e.target.value) }}
                           placeholder=""
                           defaultValue={option.value ? option.value : undefined}
@@ -441,7 +464,10 @@ export default function Home() {
               <div className="form-control">
                 <label className="label cursor-pointer">
                   <span className="label-text w-24">其它参数</span>
-                  <input type="text" placeholder="-v --remove_small 100" className="input w-full max-w-xs" />
+                  <input type="text"
+                    disabled={predicting}
+                    placeholder="-v --remove_small 100"
+                    className="input w-full max-w-xs" />
                 </label>
               </div>
             </div>
@@ -449,9 +475,11 @@ export default function Home() {
           </div>
 
           <div className='flex justify-end pr-6'>
-            <button onClick={createPredictTask} className='btn btn-primary w-32'>启动</button>
+            <button
+              onClick={createPredictTask}
+              disabled={predicting}
+              className='btn btn-primary w-32'>启动</button>
           </div>
-
         </div>
 
         <MapSquare
@@ -459,16 +487,16 @@ export default function Home() {
         />
       </div>
       {
-        predictStatus &&
+        predicting &&
         <footer className="footer footer-center p-4 bg-base-300 text-base-content">
           <div className='w-full'>
             <div className='flex flex-row w-full justify-start'>
 
               <div className='w-32'>
-                <p className="">{predictStatus.stage}</p>
+                <p className="">{predictStatus? predictStatus.stage : "初始化中" }</p>
               </div>
               <div className='w-full'>
-                <progress className="progress progress-primary" value={predictStatus.progress * 100} max="100"></progress>
+                <progress className="progress progress-primary" value={predictStatus ? predictStatus.progress * 100 : 3} max="100"></progress>
               </div>
             </div>
 
