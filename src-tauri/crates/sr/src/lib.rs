@@ -7,7 +7,7 @@ pub mod errors;
 
 use crate::errors::SenseRemoteError;
 use libffi::high::ClosureMut3;
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::{c_void, c_char, CStr, CString};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -164,6 +164,24 @@ impl SenseRemote {
             Ok(())
         }
     }
+
+    pub fn cuda_info() -> Result<Vec<String>, SenseRemoteError> {
+        unsafe {
+            let mut cuda_names: *mut *const c_char = std::ptr::null_mut();
+            let mut cuda_sizes: *mut usize = &mut 0;
+            let len = get_cuda_information(&mut cuda_names, &mut cuda_sizes);
+            if len < 0 {
+                Err(SenseRemoteError::Msg("get cuda info fail".into()))
+            } else {
+                let mut names: Vec<String> = vec![];
+                for i in 0..len {
+                    names.push(CStr::from_ptr(*cuda_names.offset(i as isize)).to_str().unwrap().to_owned());
+                }
+                Ok(names)
+            }
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -181,9 +199,15 @@ mod tests {
                 String::from("license_server=10.112.60.244:8181"),
                 String::from("verbose=debug"),
             ],
-            |progress| println!("progress: {}", progress),
+            |progress, msg| println!("progress: {}", progress),
             String::from("D:\\windows-common-libs-v4.1.x\\4bands-testoutput.shp"),
             None,
         ).unwrap()
     }
+
+    #[test]
+    fn test_cuda_info() {
+        println!("{:?}", SenseRemote::cuda_info().unwrap());
+    }
+
 }

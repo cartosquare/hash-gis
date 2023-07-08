@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import ModelCard from './components/model-carad';
 import { useModel } from './context/model-context';
 import { ModelConfig } from './types';
+import { message } from '@tauri-apps/api/dialog';
 
 export default function Home() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function Home() {
 
   const navigate_dashboard = (modelIndex: number) => {
     if (appConfig?.models[modelIndex]) {
+      appConfig.models[modelIndex].license_server = appConfig.license_server;
       setModel(appConfig.models[modelIndex]);
     }
 
@@ -27,6 +29,7 @@ export default function Home() {
       })
       .catch((msg) => {
         console.log("error: ", msg);
+        message("读取配置文件失败！请检查app_config.toml文件。", {title: '读取配置文件失败', type: 'error'});
       });
   }, [])
 

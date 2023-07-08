@@ -3,12 +3,12 @@ export interface ModelOption {
     input_type: string,
     name: string,
     label: string,
-    choices: string[] | undefined,
-    style: string[] | undefined,
-    min: number | undefined,
-    max: number | undefined,
-    value: number | undefined,
-    scale: number | undefined,
+    choices: string[] | null,
+    style: string[] | null,
+    min: number | null,
+    max: number | null,
+    value: number | null,
+    scale: number | null,
 }
 
 export interface Model {
@@ -22,6 +22,7 @@ export interface Model {
     description: string,
     tags: string[],
     options: ModelOption[],
+    license_server: string | null,
 }
 
 export interface ModelConfig {

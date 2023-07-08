@@ -27,7 +27,7 @@ export function BoundsView({ bounds }: { bounds: L.LatLngBounds | undefined }) {
 }
 
 
-export default function Map({
+export default function MapSquare({
   settings,
 }: {
   settings: MapSettings[],
@@ -43,10 +43,13 @@ export default function Map({
       return;
     }
 
+    console.log(settings);
+
     let b: L.LatLngBounds = createLeafletBounds(settings[0].bounds as number[]);
     for (let index = 1; index < settings.length; index++) {
       b.extend(createLeafletBounds(settings[index].bounds as number[]));
     }
+    console.log('bounds: ', b);
     setBounds(b);
   }, [settings])
   return (
@@ -57,7 +60,7 @@ export default function Map({
         {
           settings && settings.map((s, index) => (
 
-            <LayersControl.Overlay key={index} name={`${s.name}`} checked>
+            <LayersControl.Overlay key={index} name={`${s.path.replace(/^.*[\\\/]/, '')}`} checked>
               <TileLayer
                 attribution='&copy; <a href="https://www.rs.sensetime.com/">SenseTime</a>'
                 url={`http://localhost:8080/${s.name}/{z}/{x}/{y}.png`}

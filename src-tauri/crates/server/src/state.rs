@@ -210,9 +210,10 @@ impl State {
         let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
         let maxy = geo.geo[5];
         let miny = geo.geo[5] + map.extent.unwrap().height as f64 * geo.geo[4];
-        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+        println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        spatial_ref.set_axis_mapping_strategy(0);
         target_spatial_ref.set_axis_mapping_strategy(0);
 
         let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
@@ -221,7 +222,7 @@ impl State {
         let mut ys = [maxy, miny];
         let mut zs = [0.0f64; 2];
         transform.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
-        // println!("after transform: {}, {}, {}, {}", ys[1], xs[0], ys[0], xs[1]);
+        println!("after transform: {}, {}, {}, {}", ys[1], xs[0], ys[0], xs[1]);
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
@@ -266,6 +267,8 @@ impl State {
         let miny = extent.MinY;
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        spatial_ref.set_axis_mapping_strategy(0);
+        target_spatial_ref.set_axis_mapping_strategy(0);
         let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
         map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 

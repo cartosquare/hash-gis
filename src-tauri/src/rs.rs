@@ -77,6 +77,16 @@ pub fn predict(window: Window, params: PredictParams) {
 }
 
 
+#[tauri::command]
+pub fn get_cuda_info() -> Result<Vec<String>, String> {
+    let ret = SenseRemote::cuda_info();
+    if ret.is_err() {
+        Err("get cuda info fail".into())
+    } else {
+        Ok(ret.unwrap())
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ModelOption {
     pub input_type: String,

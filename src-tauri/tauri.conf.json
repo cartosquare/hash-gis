@@ -14,9 +14,9 @@
       "all": false,
       "dialog": {
         "all": false,
-        "ask": false,
-        "confirm": false,
-        "message": false, 
+        "ask": true,
+        "confirm": true,
+        "message": true, 
         "open": true,
         "save": true
       },
@@ -54,7 +54,11 @@
         "signingIdentity": null
       },
       "resources": [
-        "app_config.toml"
+        "app_config.toml",
+        "*.dll",
+        "mapnik",
+        "gdal",
+        "proj"
       ],
       "shortDescription": "",
       "targets": "all",
