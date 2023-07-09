@@ -108,8 +108,9 @@ impl Raster {
         let geo = self.geo();
         let epsg_code = self.epsg_code;
         let (mut win, is_skewed) = tile.to_window(self)?;
-
+        // println!("win: {:?}, is_skewed: {:?}", win, is_skewed);
         let tile_bounds_xy = tile.bounds_xy();
+        // println!("tile_bounds_xy: {:?}", tile_bounds_xy);
         if is_skewed {
             win = win * 2f64.sqrt();
         };
@@ -150,6 +151,7 @@ impl Raster {
                 )?
             };
 
+            // println!("read band data : {:?}", band_data.dim());
             container_arr
                 .slice_mut(s![out_idx, .., ..])
                 .assign(&band_data);
@@ -333,8 +335,11 @@ where
     N: ndarray::ScalarOperand,
 {
     let (raster_w, raster_h) = src.raster_size();
+    // println!("src dim: {}x{}", raster_w, raster_h);
     let raster_win = Window::new(0, 0, raster_w, raster_h);
     let inter = intersection(&[raster_win, *win]);
+
+    // println!("inter: {:?}", inter);
     if let Some(inter) = inter {
         if (inter.height >= win.height || inter.width >= win.width)
             && (win.col_off >= 0 && win.row_off >= 0)
@@ -364,6 +369,8 @@ where
         win.width as f64 / inter.width as f64,
         win.height as f64 / inter.height as f64,
     );
+    // println!("factor: {:?}", factor);
+
     let data = if is_skewed {
         read_and_reproject(band, &inter, geo, epsg_code, tile_bounds_xy, e_resample_alg)
     } else {
@@ -371,6 +378,7 @@ where
             (TILE_SIZE as f64 / factor.0).floor() as usize,
             (TILE_SIZE as f64 / factor.1).floor() as usize,
         );
+        // println!("into shape: {:?}", into_shape);
         band.read_as_array::<N>(
             (inter.col_off, inter.row_off),
             (inter.width, inter.height),
@@ -382,15 +390,16 @@ where
     .unwrap_or_else(|_| panic!("Cannot read window {:?} from {:?}", inter, src));
 
     let col_off = if win.col_off < 0 {
-        (TILE_SIZE as f64 * (win.col_off as f64 / win.width as f64)).trunc() as isize
+        (TILE_SIZE as f64 * (win.col_off as f64 / win.width as f64) - 0.5).trunc() as isize
     } else {
         0
     };
     let row_off = if win.row_off < 0 {
-        (TILE_SIZE as f64 * (win.row_off as f64 / win.height as f64)).trunc() as isize
+        (TILE_SIZE as f64 * (win.row_off as f64 / win.height as f64) - 0.5).trunc() as isize
     } else {
         0
     };
+    // println!("col_of x row_of: {}x{}", col_off, row_off);
     let (row_range, col_range) = if is_skewed {
         let row_range = ((TILE_SIZE - data.shape()[0]) as isize)
             ..cmp::min(row_off.abs() + data.shape()[0] as isize, TILE_SIZE as isize);
@@ -404,6 +413,8 @@ where
             col_off.abs()..cmp::min(col_off.abs() + data.shape()[1] as isize, TILE_SIZE as isize);
         (row_range, col_range)
     };
+    // println!("row_range: {:?}", row_range);
+    // println!("col_range: {:?}", col_range);
     container_arr
         .slice_mut(s![row_range, col_range])
         .assign(&data);
