@@ -72,4 +72,5 @@ export interface MapSettings {
     spatial_ref_code: number | null,
     spatial_units: string | null,
     bounds: number[] | null,
+    show: boolean,
 }

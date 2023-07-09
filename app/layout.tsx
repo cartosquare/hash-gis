@@ -3,6 +3,7 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { ModelProvider } from './context/model-context'
+import { MapLayersProvider } from './context/maplayers-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <ModelProvider>
-        <body className={inter.className}>{children}</body>
+        <MapLayersProvider>
+          <body className={inter.className}>{children}</body>
+        </MapLayersProvider>
       </ModelProvider>
     </html>
   )

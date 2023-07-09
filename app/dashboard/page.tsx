@@ -9,11 +9,12 @@ import { listen } from '@tauri-apps/api/event';
 import { useModel } from '../context/model-context';
 import { Body, fetch } from '@tauri-apps/api/http';
 import { MapSettings, ModelOption } from '../types';
-import MapSquare from '../map';
+// import MapSquare from '../map';
+import { useMapLayers } from '../context/maplayers-context';
 
-// const MapWithNoSSR = dynamic(() => import('../map'), {
-//   ssr: false,
-// });
+const MapWithNoSSR = dynamic(() => import('../map'), {
+  ssr: false,
+});
 
 
 interface PredictStatus {
@@ -37,6 +38,7 @@ type PredictOptions = Map<string, string | number | null>;
 export default function Home() {
   const router = useRouter();
   const { model, setModel } = useModel();
+  const mapLayers = useMapLayers();
   const [batchMode, setBatchMode] = useState<boolean>(false);
   const [inputFile, setInputFile] = useState<string[]>(Array(model?.input_files).fill(''));
   const [outputFile, setOutputFile] = useState<string>('');
@@ -49,6 +51,7 @@ export default function Home() {
   const [predictOptions, setPredictOptions] = useState<PredictOptions>(new Map());
 
   const navigatorHome = () => {
+    mapLayers.clearLayers();
     router.push("/");
   }
 
@@ -107,79 +110,6 @@ export default function Home() {
     setBatchMode(!batchMode);
   }
 
-
-  const createMapLayer = async (filepath: string, geoType: String) => {
-    let bodyData: MapSettings = {
-      name: "",
-      path: filepath,
-      xml: null,
-      extent: null,
-      geotransform: null,
-      style: null,
-      no_data_value: null,
-      spatial_ref_code: null,
-      spatial_units: null,
-      driver_name: null,
-      bounds: null
-    };
-
-    if (geoType == "vector") {
-      const style = `
-<Map srs="epsg:3857">
-	<Style name="My Style">
-		<Rule>
-			<PolygonSymbolizer fill="red" fill-opacity="1"/>
-			<LineSymbolizer stroke="blue" stroke-opacity="1" stroke-width="0.1"/>
-		</Rule>
-	</Style>
-	<Layer name="" srs="epsg:4326">
-		<StyleName>My Style</StyleName>
-		<Datasource>
-			<Parameter name="file">${filepath}</Parameter>
-			<Parameter name="layer_by_index">0</Parameter>
-			<Parameter name="type">ogr</Parameter>
-		</Datasource>
-	</Layer>
-</Map>
-    `
-      bodyData.xml = style;
-
-    } else {
-      bodyData.style = {
-        colours: [
-          [0, 0, 0], [255, 255, 255]
-        ],
-        bands: [1, 2, 3],
-        name: null,
-        vmin: null,
-        vmax: null,
-      };
-    }
-
-    try {
-      const rawResponse = await fetch<MapSettings>(`http://localhost:8080/map`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: Body.json(bodyData),
-      });
-      if (rawResponse.status != 200) {
-        console.log('error', rawResponse);
-      } else {
-        const response = rawResponse.data;
-        if (response.bounds) {
-          // console.log(response);
-          setMapSettings([...mapSettings, response]);
-        }
-      }
-    } catch (error) {
-      console.log(error);
-      // toast.error(`请求失败：${error}`);
-      console.log('error!', error);
-    }
-  }
-
   const openInputFile = async (index: number) => {
     if (!model) {
       return;
@@ -219,7 +149,7 @@ export default function Home() {
 
     // create map view
     if (!batchMode) {
-      await createMapLayer(file as string, "raster");
+      mapLayers.createLayer(file as string, 'raster');
     }
   }
 
@@ -237,6 +167,7 @@ export default function Home() {
         ]
       });
       setOutputFile(file as string);
+      // mapLayers.createLayer(file as string, 'vector');
     } else {
       const file = await open({
         directory: batchMode,
@@ -309,7 +240,7 @@ export default function Home() {
     }
 
     if (predictStatus.stage == "结束" && predictStatus.progress != -1) {
-      createMapLayer(predictStatus.params.outputPath, "vector");
+      mapLayers.createLayer(predictStatus.params.outputPath, "vector");
       setPredicting(false);
     } else {
       setPredicting(true);
@@ -481,9 +412,7 @@ export default function Home() {
           </div>
         </div>
 
-        <MapSquare
-          settings={mapSettings}
-        />
+        <MapWithNoSSR/>
       </div>
       {
         predicting &&

@@ -3,8 +3,10 @@
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, useMap, FeatureGroup, Popup, LayersControl } from 'react-leaflet';
 import L, { Bounds, LatLngExpression } from 'leaflet';
-import { MapSettings } from './types';
 import { useEffect, useState } from 'react';
+import { MapLegend } from './components/map-legend';
+import { useMapLayers } from './context/maplayers-context';
+import { createLeafletBounds } from './utils';
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: ('leaflet/images/marker-icon-2x.png'),
@@ -23,64 +25,43 @@ export function BoundsView({ bounds }: { bounds: L.LatLngBounds | undefined }) {
 
   useEffect(() => {
     console.log("into bounds view")
-  if (bounds) {
-    map.fitBounds(bounds)
-  }
+    if (bounds) {
+      map.fitBounds(bounds)
+    }
   }, [bounds])
   return null;
 }
 
-
-export default function MapSquare({
-  settings,
-}: {
-  settings: MapSettings[],
-}) {
+export default function MapSquare() {
   const [bounds, setBounds] = useState<L.LatLngBounds>();
-
-  const createLeafletBounds = (extent: number[]): L.LatLngBounds => {
-    return new L.LatLngBounds(L.latLng(extent[0], extent[1]), L.latLng(extent[2], extent[3]));
-  }
+  const mapLayers = useMapLayers();
 
   useEffect(() => {
-    if (settings.length == 0) {
+    console.log("layer changed: ", mapLayers.layers);
+    if (mapLayers.layers.length == 0) {
       return;
     }
 
-    console.log(settings);
-
-    let b: L.LatLngBounds = createLeafletBounds(settings[0].bounds as number[]);
-    for (let index = 1; index < settings.length; index++) {
-      b.extend(createLeafletBounds(settings[index].bounds as number[]));
+    let b: L.LatLngBounds = createLeafletBounds(mapLayers.layers[0].bounds as number[]);
+    for (let index = 1; index < mapLayers.layers.length; index++) {
+      b.extend(createLeafletBounds(mapLayers.layers[index].bounds as number[]));
     }
-    console.log('bounds: ', b);
     setBounds(b);
-  }, [settings])
+  }, [mapLayers.layers])
+
   return (
     <MapContainer className='flex grow' center={L.latLng(39.98, 116.31)} zoom={10}>
-
-      <LayersControl position='topright'>
-        <LayersControl.BaseLayer name="OpenStreetMap" checked>
-          <TileLayer
-            attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a>'
-            url='https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      {
+        mapLayers.layers.map((s, index) => s.show && (
+          <TileLayer key={index}
+            url={`http://localhost:8080/${s.name}/{z}/{x}/{y}.png`}
           />
-        </LayersControl.BaseLayer>
-        {
-          settings && settings.map((s, index) => (
-
-            <LayersControl.Overlay key={index} name={`${s.path.replace(/^.*[\\\/]/, '')}`} checked>
-              <TileLayer
-                attribution='&copy; <a href="https://www.rs.sensetime.com/">SenseTime</a>'
-                url={`http://localhost:8080/${s.name}/{z}/{x}/{y}.png`}
-              />
-            </LayersControl.Overlay>
-          ))
-        }
-      </LayersControl>
+        ))
+      }
       {
         bounds && <BoundsView bounds={bounds} />
       }
+      <MapLegend></MapLegend>
     </MapContainer>
   );
 }
