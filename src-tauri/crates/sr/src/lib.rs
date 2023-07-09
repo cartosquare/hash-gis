@@ -32,6 +32,8 @@ impl SenseRemote {
         _log_path: Option<String>,
     ) -> Result<(), SenseRemoteError> {
         unsafe {
+            callback(0.0, "loading-model".into());
+
             // process options
             let mut options_arr: Vec<_> = options
                 .iter()
@@ -65,6 +67,7 @@ impl SenseRemote {
                     "SenseRemote load model fail",
                 )));
             }
+            callback(1.0, "loading-model".into());
 
             // add datasource
             for data_source in data_sources {

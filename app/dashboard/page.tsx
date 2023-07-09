@@ -11,6 +11,7 @@ import { Body, fetch } from '@tauri-apps/api/http';
 import { MapSettings, ModelOption } from '../types';
 // import MapSquare from '../map';
 import { useMapLayers } from '../context/maplayers-context';
+import { getPredictMsg } from '../utils';
 
 const MapWithNoSSR = dynamic(() => import('../map'), {
   ssr: false,
@@ -20,6 +21,7 @@ const MapWithNoSSR = dynamic(() => import('../map'), {
 interface PredictStatus {
   stage: string,
   progress: number,
+  fail:  boolean,
   params: PredictParams,
 }
 
@@ -44,10 +46,8 @@ export default function Home() {
   const [outputFile, setOutputFile] = useState<string>('');
   const [devideId, setDeviceId] = useState<number>(0);
   const [gpuList, setGpuList] = useState<string[]>([]);
-  const [mapSettings, setMapSettings] = useState<MapSettings[]>([]);
-  const [predictStatus, setPredictStatus] = useState<PredictStatus>();
+  const [predictStatus, setPredictStatus] = useState<PredictStatus | null>(null);
   const [predicting, setPredicting] = useState<boolean>(false);
-
   const [predictOptions, setPredictOptions] = useState<PredictOptions>(new Map());
 
   const navigatorHome = () => {
@@ -239,8 +239,12 @@ export default function Home() {
       return
     }
 
-    if (predictStatus.stage == "结束" && predictStatus.progress != -1) {
-      mapLayers.createLayer(predictStatus.params.outputPath, "vector");
+    if (predictStatus.stage == "finish") {
+      if (predictStatus.fail) {
+        message("解译失败！请联系技术支持人员。", {"title": "解译失败", type: "error"});
+      } else {
+        mapLayers.createLayer(predictStatus.params.outputPath, "vector");
+      }
       setPredicting(false);
     } else {
       setPredicting(true);
@@ -416,20 +420,22 @@ export default function Home() {
       </div>
       {
         predicting &&
+        <div className='flex w-full'>
         <footer className="footer footer-center p-4 bg-base-300 text-base-content">
           <div className='w-full'>
             <div className='flex flex-row w-full justify-start'>
 
               <div className='w-32'>
-                <p className="">{predictStatus? predictStatus.stage : "初始化中" }</p>
+                <p className="">{getPredictMsg(predictStatus? predictStatus.stage : "")}</p>
               </div>
               <div className='w-full'>
-                <progress className="progress progress-primary" value={predictStatus ? predictStatus.progress * 100 : 3} max="100"></progress>
+                <progress className="progress progress-primary" value={predictStatus ? predictStatus.progress * 100 : 0} max="100"></progress>
               </div>
             </div>
 
           </div>
         </footer>
+        </div>
       }
     </main>
   )

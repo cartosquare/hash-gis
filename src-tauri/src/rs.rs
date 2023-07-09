@@ -61,14 +61,14 @@ pub fn predict(window: Window, params: PredictParams) {
         if status.is_err() {
             w.emit("predict-status", PredictStatus{
                 progress: -1.0,
-                stage: "结束".into(),
+                stage: "finish".into(),
                 fail: true,
                 params: Some(p),
             })
         } else {
             w.emit("predict-status", PredictStatus{
                 progress: 1.0,
-                stage: "结束".into(),
+                stage: "finish".into(),
                 fail: false,
                 params: Some(p),
             })
