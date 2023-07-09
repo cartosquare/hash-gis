@@ -20,9 +20,13 @@ export function ChangeView({ coords }: { coords: LatLngExpression }) {
 
 export function BoundsView({ bounds }: { bounds: L.LatLngBounds | undefined }) {
   const map = useMap();
+
+  useEffect(() => {
+    console.log("into bounds view")
   if (bounds) {
     map.fitBounds(bounds)
   }
+  }, [bounds])
   return null;
 }
 
@@ -35,7 +39,7 @@ export default function MapSquare({
   const [bounds, setBounds] = useState<L.LatLngBounds>();
 
   const createLeafletBounds = (extent: number[]): L.LatLngBounds => {
-      return new L.LatLngBounds(L.latLng(extent[0], extent[1]), L.latLng(extent[2], extent[3]));
+    return new L.LatLngBounds(L.latLng(extent[0], extent[1]), L.latLng(extent[2], extent[3]));
   }
 
   useEffect(() => {
@@ -53,10 +57,15 @@ export default function MapSquare({
     setBounds(b);
   }, [settings])
   return (
-    <MapContainer className='flex grow' bounds={bounds}>
+    <MapContainer className='flex grow' center={L.latLng(39.98, 116.31)} zoom={10}>
 
       <LayersControl position='topright'>
-
+        <LayersControl.BaseLayer name="OpenStreetMap" checked>
+          <TileLayer
+            attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a>'
+            url='https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+          />
+        </LayersControl.BaseLayer>
         {
           settings && settings.map((s, index) => (
 
@@ -69,7 +78,9 @@ export default function MapSquare({
           ))
         }
       </LayersControl>
-      <BoundsView bounds={bounds} />
+      {
+        bounds && <BoundsView bounds={bounds} />
+      }
     </MapContainer>
   );
 }

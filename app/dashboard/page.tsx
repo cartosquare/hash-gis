@@ -38,8 +38,8 @@ export default function Home() {
   const router = useRouter();
   const { model, setModel } = useModel();
   const [batchMode, setBatchMode] = useState<boolean>(false);
-  const [inputFile, setInputFile] = useState<string[]>([]);
-  const [outputFile, setOutputFile] = useState<string>();
+  const [inputFile, setInputFile] = useState<string[]>(Array(model?.input_files).fill(''));
+  const [outputFile, setOutputFile] = useState<string>('');
   const [devideId, setDeviceId] = useState<number>(0);
   const [gpuList, setGpuList] = useState<string[]>([]);
   const [mapSettings, setMapSettings] = useState<MapSettings[]>([]);
@@ -265,7 +265,6 @@ export default function Home() {
     // 监听解译状态
     const createListenEvent = async () => {
       const unlistenPredict = await listen<PredictStatus>('predict-status', async (event) => {
-        console.log('receive event', event.payload);
         setPredictStatus(event.payload as PredictStatus);
       });
       return unlistenPredict;
