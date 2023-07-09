@@ -1,5 +1,6 @@
 //! Types and helpers to work with data windows.
 use crate::affine::GeoTransform;
+use crate::raster::SpatialInfo;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::ops::Mul;
@@ -71,11 +72,10 @@ impl Window {
 
     pub fn bounds_lat_long(
         &self,
-        spatial_ref_code: i32,
+        spatial_info: &SpatialInfo,
         geo: &GeoTransform,
     ) -> (f64, f64, f64, f64) {
-        let spatial_ref =
-            gdal::spatial_ref::SpatialRef::from_epsg(spatial_ref_code as u32).unwrap();
+        let spatial_ref = spatial_info.to_spatial_ref().unwrap();
         let wgs84_crs = gdal::spatial_ref::SpatialRef::from_epsg(4326).unwrap();
         let vertex_trans =
             gdal::spatial_ref::CoordTransform::new(&spatial_ref, &wgs84_crs).unwrap();

@@ -201,15 +201,13 @@ impl Tile {
         let geo = raster.geo();
         let spatial_ref = raster.spatial_ref()?;
 
-        let src_ref_code = spatial_ref.auth_code().unwrap_or(3857) as u32;
         let src_spatial_units = spatial_ref
             .linear_units_name()
             .unwrap_or_else(|_| "metre".to_string());
 
         let wgs84_crs = gdal::spatial_ref::SpatialRef::from_epsg(4326)?;
-        let src_crs = SpatialRef::from_epsg(src_ref_code)?;
 
-        let vertex_trans = gdal::spatial_ref::CoordTransform::new(&wgs84_crs, &src_crs)?;
+        let vertex_trans = gdal::spatial_ref::CoordTransform::new(&wgs84_crs, &spatial_ref)?;
 
         let vertices = self.vertices();
         let mut xs = [vertices[0].0, vertices[1].0, vertices[2].0, vertices[3].0];

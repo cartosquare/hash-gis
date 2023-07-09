@@ -29,16 +29,16 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
         let style_gradient = req.state().get_style(map_name).unwrap();
 
         if !raster.intersects(&tile)? {
-            info!(
-                "{:?} does not intersect {}. Returning empty {}",
-                tile, map_name, ext
-            );
+            // println!(
+            //     "{:?} does not intersect {}. Returning empty {}",
+            //     tile, map_name, ext
+            // );
             return Ok(Response::builder(StatusCode::Ok)
                 .content_type(mime::PNG)
                 .body(EMPTY_PNG.clone()));
         }
 
-        info!("Processing {:?} ({:?}) for {:?}", tile, ext, map_name);
+        // println!("Processing {:?} ({:?}) for {:?}", tile, ext, map_name);
 
         let bands = req_map.get_bands();
         let no_data_value = req_map.get_no_data_values();

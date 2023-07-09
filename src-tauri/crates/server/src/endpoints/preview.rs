@@ -19,10 +19,11 @@ async fn gen_template(req_map: &MapSettings, map_name: &str) -> tide::Result<Str
         .geotransform
         .as_ref()
         .expect("Map was not initialised");
-    let spatial_ref_code = req_map.spatial_ref_code.expect("Map was not initialised");
     let ext = req_map.extent.expect("Map was not initialised");
 
-    let (lat_max, long_min, lat_min, long_max) = ext.bounds_lat_long(spatial_ref_code, geo);
+    let sr = req_map.spatial_info.as_ref().expect("Map was not initialised");
+
+    let (lat_max, long_min, lat_min, long_max) = ext.bounds_lat_long(sr, geo);
 
     let params = &[
         ("m", map_name),

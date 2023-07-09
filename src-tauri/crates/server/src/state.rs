@@ -5,7 +5,7 @@ use map_engine::{
     gdal::spatial_ref::{CoordTransform, SpatialRef},
     gdal::Dataset,
     gdal::LayerAccess,
-    raster::Raster,
+    raster::{Raster, SpatialInfo},
     vector::Vector,
     windows::Window,
 };
@@ -143,8 +143,7 @@ impl State {
             map.geotransform = Some(geo.clone());
 
             let spatial_ref = raster.spatial_ref()?;
-            let spatial_ref_code = spatial_ref.auth_code()?;
-            map.spatial_ref_code = Some(spatial_ref_code as i32);
+            map.spatial_info = Some(SpatialInfo::from_spatial_ref(&spatial_ref));
             let spatial_units = spatial_ref.linear_units_name()?;
             map.spatial_units = Some(spatial_units);
 
@@ -200,8 +199,8 @@ impl State {
         map.geotransform = Some(geo.clone());
 
         let spatial_ref = raster.spatial_ref()?;
-        let spatial_ref_code = spatial_ref.auth_code()?;
-        map.spatial_ref_code = Some(spatial_ref_code as i32);
+        map.spatial_info = Some(raster.spatial_info());
+
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
 
@@ -255,8 +254,7 @@ impl State {
 
         let layer = ds.layer(0)?;
         let spatial_ref = layer.spatial_ref().unwrap_or_else(|| SpatialRef::from_epsg(4326).unwrap());
-        let spatial_ref_code = spatial_ref.auth_code()?;
-        map.spatial_ref_code = Some(spatial_ref_code as i32);
+        map.spatial_info = Some(SpatialInfo::from_spatial_ref(&spatial_ref));
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
 

@@ -1,5 +1,5 @@
 use super::style::Style;
-use map_engine::{affine::GeoTransform, cmap::Composite, windows::Window};
+use map_engine::{affine::GeoTransform, cmap::Composite, windows::Window, raster::SpatialInfo};
 use serde::{Deserialize, Serialize};
 
 /// Configurable setting for individual maps.
@@ -23,7 +23,8 @@ pub struct MapSettings {
     /// GDAL driver used to open the file
     pub driver_name: Option<String>,
     /// Spatial reference system
-    pub spatial_ref_code: Option<i32>,
+    //pub spatial_ref_code: Option<i32>,
+    pub spatial_info: Option<SpatialInfo>,
     /// Spatial units
     pub spatial_units: Option<String>,
     /// wgs84 bounds

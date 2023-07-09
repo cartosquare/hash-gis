@@ -60,6 +60,13 @@ export interface Style {
     bands: number[] | null,
 }
 
+export interface SpatialInfo {
+    epsg_code: number | null,
+    proj4: string | null,
+    wkt: string | null,
+    esri: string | null,
+}
+
 export interface MapSettings {
     extent: Window | null,
     path: string,
@@ -69,7 +76,7 @@ export interface MapSettings {
     style: Style | null,
     xml: string | null,
     driver_name: string | null,
-    spatial_ref_code: number | null,
+    spatial_info: SpatialInfo | null,
     spatial_units: string | null,
     bounds: number[] | null,
     show: boolean,

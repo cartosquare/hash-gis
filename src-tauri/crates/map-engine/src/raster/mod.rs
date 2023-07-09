@@ -19,13 +19,60 @@ use num_traits::{Num, NumCast};
 pub use pixels::{driver::MBTILES, RawPixels, StyledPixels};
 use std::cmp;
 use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SpatialInfo {
+    epsg_code: Option<i32>,
+    proj4: Option<String>,
+    wkt: Option<String>,
+    esri: Option<String>,
+}
+
+impl SpatialInfo {
+    pub fn from_spatial_ref(spatial_ref: &SpatialRef) -> SpatialInfo {
+        let epsg_code: Option<i32> = match spatial_ref.auth_code() {
+            Ok(data) => Some(data),
+            _ => None,
+        };
+        let wkt: Option<String> =  match spatial_ref.to_wkt() {
+            Ok(data) => Some(data),
+            _ => None,
+        };
+        let proj4: Option<String> = match spatial_ref.to_proj4() {
+            Ok(data) => Some(data),
+            _ => None,
+        };
+
+        SpatialInfo {
+            epsg_code,
+            wkt,
+            proj4,
+            esri: None,
+            }
+    }
+
+    pub fn to_spatial_ref(&self) -> Result<SpatialRef, MapEngineError> {
+        if self.epsg_code.is_some() {
+            Ok(SpatialRef::from_epsg(self.epsg_code.clone().unwrap() as u32)?)
+        } else if self.proj4.is_some() {
+            Ok(SpatialRef::from_proj4(&self.proj4.clone().unwrap())?)
+        } else if self.wkt.is_some() {
+            Ok(SpatialRef::from_wkt(&self.wkt.clone().unwrap())?)
+        } else if self.esri.is_some() {
+            Ok(SpatialRef::from_esri(&self.wkt.clone().unwrap())?)
+        } else {
+            Err(MapEngineError::Msg("Unknow spatial ref".into()))
+        }
+    }
+}
 
 /// A Raster image.
 #[derive(Debug, Clone)]
 pub struct Raster {
     path: PathBuf,
     geo: GeoTransform,
-    epsg_code: i32,
+    spatial_info: SpatialInfo,
     driver_name: String,
     raster_count: isize,
     raster_size: (usize, usize),
@@ -43,7 +90,7 @@ impl Raster {
         Ok(Self {
             path,
             geo,
-            epsg_code: src.spatial_ref()?.auth_code()?,
+            spatial_info: SpatialInfo::from_spatial_ref(&src.spatial_ref()?),
             driver_name: src.driver().short_name(),
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
@@ -57,10 +104,11 @@ impl Raster {
     pub fn from_src(path: PathBuf, src: &Dataset) -> Result<Self, MapEngineError> {
         let geo = src.geo_transform()?;
         let geo = GeoTransform::from_gdal(&geo);
+        let spatial_ref = src.spatial_ref()?;
         Ok(Self {
             path,
             geo,
-            epsg_code: src.spatial_ref()?.auth_code()?,
+            spatial_info: SpatialInfo::from_spatial_ref(&spatial_ref),
             driver_name: src.driver().short_name(),
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
@@ -106,7 +154,6 @@ impl Raster {
         let driver_name = self.driver_name();
         // let tile_size = TILE_SIZE as usize;
         let geo = self.geo();
-        let epsg_code = self.epsg_code;
         let (mut win, is_skewed) = tile.to_window(self)?;
         // println!("win: {:?}, is_skewed: {:?}", win, is_skewed);
         let tile_bounds_xy = tile.bounds_xy();
@@ -131,7 +178,7 @@ impl Raster {
                 &band,
                 &win,
                 geo,
-                epsg_code,
+                &self.spatial_info,
                 tile_bounds_xy,
                 is_skewed,
                 e_resample_alg,
@@ -144,7 +191,7 @@ impl Raster {
                     &win,
                     // req_overview as f64,
                     geo,
-                    epsg_code,
+                    &self.spatial_info,
                     tile_bounds_xy,
                     is_skewed,
                     e_resample_alg,
@@ -170,7 +217,11 @@ impl Raster {
     }
 
     pub fn spatial_ref(&self) -> Result<SpatialRef, MapEngineError> {
-        Ok(SpatialRef::from_epsg(self.epsg_code as u32)?)
+        self.spatial_info.to_spatial_ref()
+    }
+
+    pub fn spatial_info(&self) -> SpatialInfo {
+        self.spatial_info.clone()
     }
 
     pub fn driver_name(&self) -> &str {
@@ -196,7 +247,7 @@ impl Raster {
 fn array_to_mem_dataset<N>(
     arr: Array2<N>,
     transform: &GeoTransform,
-    crs: i32,
+    spatial_info: &SpatialInfo,
     fname: &str,
 ) -> Result<Dataset, MapEngineError>
 where
@@ -217,7 +268,7 @@ where
     let gt = transform.to_tuple();
     let gt = [gt.0, gt.1, gt.2, gt.3, gt.4, gt.5];
     dataset.set_geo_transform(&gt)?;
-    dataset.set_spatial_ref(&SpatialRef::from_epsg(crs as u32)?)?;
+    dataset.set_spatial_ref(&spatial_info.to_spatial_ref()?)?;
 
     let mut band = dataset.rasterband(1)?;
 
@@ -231,18 +282,18 @@ where
 fn reproject<N>(
     source: Array2<N>,
     src_transform: &GeoTransform,
-    src_crs: i32,
+    src_spatial_info: &SpatialInfo,
     destination: Array2<N>,
     dst_transform: &GeoTransform,
-    dst_crs: i32,
+    dst_spatial_info: &SpatialInfo,
 ) -> Result<Array2<N>, MapEngineError>
 where
     N: GdalType + Copy,
 {
     let dst_shape = &destination.shape();
     let dst_shape = (dst_shape[0], dst_shape[1]);
-    let src_dataset = array_to_mem_dataset(source, src_transform, src_crs, "/tmp/src.tif")?;
-    let dst_dataset = array_to_mem_dataset(destination, dst_transform, dst_crs, "/tmp/dst.tif")?;
+    let src_dataset = array_to_mem_dataset(source, src_transform, src_spatial_info, "/tmp/src.tif")?;
+    let dst_dataset = array_to_mem_dataset(destination, dst_transform, dst_spatial_info, "/tmp/dst.tif")?;
     gdal::raster::reproject(&src_dataset, &dst_dataset)?;
 
     let dst_band = dst_dataset.rasterband(1)?;
@@ -261,7 +312,7 @@ fn read_and_reproject<N>(
     band: &RasterBand,
     win: &Window,
     geo: &GeoTransform,
-    epsg_code: i32,
+    spatial_info: &SpatialInfo,
     tile_bounds_xy: (f64, f64, f64, f64),
     e_resample_alg: Option<ResampleAlg>,
 ) -> Result<Array2<N>, MapEngineError>
@@ -287,7 +338,7 @@ where
     let dst_rows = ((max_y - min_y) / -res_y) as usize;
     let dst_shape = (dst_cols, dst_rows);
     let dst_arr = Array2::<N>::zeros(dst_shape);
-    reproject(arr, &win_geo, epsg_code, dst_arr, mercator_geo, 3857)
+    reproject(arr, &win_geo, spatial_info, dst_arr, mercator_geo, &SpatialInfo { epsg_code: Some(3857), proj4: None, wkt: None, esri: None })
 }
 
 fn try_overview<N>(
@@ -295,7 +346,7 @@ fn try_overview<N>(
     win: &Window,
     // factor: f64,
     geo: &GeoTransform,
-    epsg_code: i32,
+    spatial_info: &SpatialInfo,
     tile_bounds_xy: (f64, f64, f64, f64),
     is_skewed: bool,
     e_resample_alg: Option<ResampleAlg>,
@@ -304,7 +355,7 @@ where
     N: GdalType + Copy + Num,
 {
     if is_skewed {
-        read_and_reproject(band, win, geo, epsg_code, tile_bounds_xy, e_resample_alg)
+        read_and_reproject(band, win, geo, spatial_info, tile_bounds_xy, e_resample_alg)
     } else {
         band.read_as_array::<N>(
             // (new_win.col_off, new_win.row_off),
@@ -325,7 +376,7 @@ fn try_boundless<N>(
     band: &RasterBand,
     win: &Window,
     geo: &GeoTransform,
-    epsg_code: i32,
+    spatial_info: &SpatialInfo,
     tile_bounds_xy: (f64, f64, f64, f64),
     is_skewed: bool,
     e_resample_alg: Option<ResampleAlg>,
@@ -372,7 +423,7 @@ where
     // println!("factor: {:?}", factor);
 
     let data = if is_skewed {
-        read_and_reproject(band, &inter, geo, epsg_code, tile_bounds_xy, e_resample_alg)
+        read_and_reproject(band, &inter, geo, spatial_info, tile_bounds_xy, e_resample_alg)
     } else {
         let into_shape = (
             (TILE_SIZE as f64 / factor.0).floor() as usize,
@@ -390,12 +441,12 @@ where
     .unwrap_or_else(|_| panic!("Cannot read window {:?} from {:?}", inter, src));
 
     let col_off = if win.col_off < 0 {
-        (TILE_SIZE as f64 * (win.col_off as f64 / win.width as f64) - 0.5).trunc() as isize
+        (TILE_SIZE as f64 * (win.col_off as f64 / win.width as f64) - 1.0).trunc() as isize
     } else {
         0
     };
     let row_off = if win.row_off < 0 {
-        (TILE_SIZE as f64 * (win.row_off as f64 / win.height as f64) - 0.5).trunc() as isize
+        (TILE_SIZE as f64 * (win.row_off as f64 / win.height as f64) - 1.0).trunc() as isize
     } else {
         0
     };

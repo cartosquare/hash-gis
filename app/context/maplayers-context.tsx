@@ -103,7 +103,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             geotransform: null,
             style: null,
             no_data_value: null,
-            spatial_ref_code: null,
+            spatial_info: null,
             spatial_units: null,
             driver_name: null,
             bounds: null,
