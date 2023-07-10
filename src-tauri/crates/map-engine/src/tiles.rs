@@ -244,7 +244,7 @@ fn get_row_cols(
     ys: &[f64],
     offset: &[(f64, f64)],
     geo: &GeoTransform,
-    src_spatial_units: &str,
+    _src_spatial_units: &str,
 ) -> Vec<(i32, i32)> {
     xs.iter()
         .zip(ys)

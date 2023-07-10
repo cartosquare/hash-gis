@@ -36,7 +36,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col h-full items-center justify-between bg-base-300">
       <div className='flex w-full grow bg-base-300 p-4 justify-center'>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 content-stretch">
           {
             appConfig && appConfig.models.map((model, index) => (
 

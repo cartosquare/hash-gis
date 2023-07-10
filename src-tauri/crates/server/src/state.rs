@@ -160,6 +160,34 @@ impl State {
             let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
             map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 
+            // calculate band min/max
+            if map.style.is_none() && raster.raster_count() >= 3 {
+                let min_max = raster.min_max();
+                map.style = Some(Style {
+                    name: None,
+                    colours: Some(ColourDefinition::RGB(
+                        [min_max[0].0, min_max[0].0, min_max[2].0],
+                        [min_max[0].1, min_max[1].1, min_max[2].1],
+                    )),
+                    bands: Some([1, 2, 3].to_vec()),
+                    vmax: None,
+                    vmin: None,
+                });
+                println!("auto add map style: {:?}", map.style);
+            }
+
+            if map.style.is_none() && raster.raster_count() < 3 {
+                let min_max = raster.min_max();
+                map.style = Some(Style {
+                    name: Some("viridis".into()),
+                    colours: None,
+                    bands: Some([1].to_vec()),
+                    vmin: Some(min_max[0].0),
+                    vmax: Some(min_max[0].1),
+                });
+                println!("auto add map style: {:?}", map.style);
+            }
+
             State::validate_no_data_values(&src, &mut map)?;
             State::validate_bands(&map)?;
 
@@ -222,11 +250,43 @@ impl State {
         let mut xs = [minx, maxx];
         let mut ys = [maxy, miny];
         let mut zs = [0.0f64; 2];
-        transform.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
-        println!("after transform: {}, {}, {}, {}", ys[1], xs[0], ys[0], xs[1]);
+        transform
+            .transform_coords(&mut xs, &mut ys, &mut zs)
+            .unwrap();
+        println!(
+            "after transform: {}, {}, {}, {}",
+            ys[1], xs[0], ys[0], xs[1]
+        );
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+
+        // auto assign style if not specified
+        if map.style.is_none() && raster.raster_count() >= 3 {
+            let min_max = raster.min_max();
+            map.style = Some(Style {
+                name: None,
+                colours: Some(ColourDefinition::RGB(
+                    [min_max[0].0, min_max[0].0, min_max[2].0],
+                    [min_max[0].1, min_max[1].1, min_max[2].1],
+                )),
+                bands: Some([1, 2, 3].to_vec()),
+                vmax: None,
+                vmin: None,
+            });
+            println!("auto add map style: {:?}", map.style);
+        }
+        if map.style.is_none() && raster.raster_count() < 3 {
+            let min_max = raster.min_max();
+            map.style = Some(Style {
+                name: Some("viridis".into()),
+                colours: None,
+                bands: Some([1].to_vec()),
+                vmin: Some(min_max[0].0),
+                vmax: Some(min_max[0].1),
+            });
+            println!("auto add map style: {:?}", map.style);
+        }
 
         State::validate_no_data_values(&src, map)?;
         State::validate_bands(&map)?;
@@ -255,7 +315,9 @@ impl State {
         let ds = Dataset::open(path)?;
 
         let layer = ds.layer(0)?;
-        let spatial_ref = layer.spatial_ref().unwrap_or_else(|| SpatialRef::from_epsg(4326).unwrap());
+        let spatial_ref = layer
+            .spatial_ref()
+            .unwrap_or_else(|| SpatialRef::from_epsg(4326).unwrap());
         map.spatial_info = Some(SpatialInfo::from_spatial_ref(&spatial_ref));
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
@@ -275,13 +337,21 @@ impl State {
         let mut xs = [minx, maxx];
         let mut ys = [maxy, miny];
         let mut zs = [0.0f64; 2];
-        transform.transform_coords(&mut xs, &mut ys, &mut zs).unwrap();
-        println!("after transform: {}, {}, {}, {}", ys[1], xs[0], ys[0], xs[1]);
+        transform
+            .transform_coords(&mut xs, &mut ys, &mut zs)
+            .unwrap();
+        println!(
+            "after transform: {}, {}, {}, {}",
+            ys[1], xs[0], ys[0], xs[1]
+        );
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         // map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 
-        self.maps.write().unwrap().insert(map.name.clone(), map.clone());
+        self.maps
+            .write()
+            .unwrap()
+            .insert(map.name.clone(), map.clone());
         self.vectors.write().unwrap().insert(map.name.clone(), v);
 
         Ok(map.clone())

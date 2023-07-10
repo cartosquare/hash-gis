@@ -14,7 +14,7 @@ export default function ModelCard({
     isNew: boolean,
 }) {
     return (
-        <div className="card w-64 bg-base-100 shadow-xl">
+        <div className="card w-64 bg-base-100 shadow-xl h-full">
             <figure><img src={img} alt="model" /></figure>
             <div className="card-body">
                 <h2 className="card-title">

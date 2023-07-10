@@ -91,4 +91,19 @@ mod test {
     async fn test_get_tile_16bit_3bands_epsg32650_nodata0() {
         test_get_tile(16, 54565, 25807, "16bit_3bands_epsg32650_nodata0".into()).await;
     }
+
+    #[async_std::test]
+    async fn test_get_tile_16bit_3bands_epsg32650_nodata0_autostyle() {
+        test_get_tile(16, 54565, 25807, "16bit_3bands_epsg32650_nodata0_autostyle".into()).await;
+    }
+
+    #[async_std::test]
+    async fn test_get_tile_16bit_1band_epsg32650_nodataunset_autostyle() {
+        test_get_tile(11, 1698, 859, "16bit_1band_epsg32650_nodataunset_autostyle".into()).await;
+    }
+
+    #[async_std::test]
+    async fn test_get_tile_16bit_1band_epsg32650_nodataunset() {
+        test_get_tile(11, 1698, 859, "16bit_1band_epsg32650_nodataunset".into()).await;
+    }
 }

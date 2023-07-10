@@ -76,6 +76,7 @@ pub struct Raster {
     driver_name: String,
     raster_count: isize,
     raster_size: (usize, usize),
+    min_max: Vec<(f64, f64)>,
 }
 
 impl Raster {
@@ -87,6 +88,14 @@ impl Raster {
         let src = Dataset::open(&path)?;
         let geo = src.geo_transform()?;
         let geo = GeoTransform::from_gdal(&geo);
+        let mut min_max: Vec<(f64, f64)> = vec![];
+        for b in 1..=src.raster_count() {
+            let band = src.rasterband(b)?;
+            let minmax = band.compute_raster_min_max(true)?;
+            let skip = (minmax.max - minmax.min) * 0.02;
+            min_max.push((minmax.min + skip, minmax.max - skip));
+        }
+
         Ok(Self {
             path,
             geo,
@@ -94,6 +103,7 @@ impl Raster {
             driver_name: src.driver().short_name(),
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
+            min_max,
         })
     }
 
@@ -105,6 +115,14 @@ impl Raster {
         let geo = src.geo_transform()?;
         let geo = GeoTransform::from_gdal(&geo);
         let spatial_ref = src.spatial_ref()?;
+
+        let mut min_max: Vec<(f64, f64)> = vec![];
+        for b in 1..=src.raster_count() {
+            let band = src.rasterband(b)?;
+            let minmax = band.compute_raster_min_max(true)?;
+            min_max.push((minmax.min, minmax.max));
+        }
+
         Ok(Self {
             path,
             geo,
@@ -112,6 +130,7 @@ impl Raster {
             driver_name: src.driver().short_name(),
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
+            min_max,
         })
     }
 
@@ -235,6 +254,10 @@ impl Raster {
 
     pub fn raster_size(&self) -> (usize, usize) {
         self.raster_size
+    }
+
+    pub fn min_max(&self) -> Vec<(f64, f64)> {
+        self.min_max.clone()
     }
 
     pub fn intersects(&self, tile: &Tile) -> Result<bool, MapEngineError> {

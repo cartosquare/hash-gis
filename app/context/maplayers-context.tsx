@@ -3,6 +3,7 @@
 import { createContext, PropsWithChildren, useContext, useState } from "react";
 import { MapSettings } from "../types";
 import { Body, fetch } from '@tauri-apps/api/http';
+import { message } from "@tauri-apps/api/dialog";
 
 type mapLayersType = {
     layers: MapSettings[],
@@ -146,16 +147,6 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
     `
             bodyData.xml = style;
 
-        } else {
-            bodyData.style = {
-                colours: [
-                    [0, 0, 0], [255, 255, 255]
-                ],
-                bands: [1, 2, 3],
-                name: null,
-                vmin: null,
-                vmax: null,
-            };
         }
 
         try {
@@ -168,6 +159,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             });
             if (rawResponse.status != 200) {
                 console.log('error', rawResponse);
+                message("加载图层失败！请检查数据有效性。", {title: "加载图层失败", type: "error"})
             } else {
                 const response = rawResponse.data;
                 if (response.bounds) {
@@ -180,6 +172,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             console.log(error);
             // toast.error(`请求失败：${error}`);
             console.log('error!', error);
+            message("加载图层失败！请检查数据有效性。", {title: "加载图层失败", type: "error"})
         }
     }
 
