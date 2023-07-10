@@ -135,6 +135,8 @@ impl Raster {
             let scale = raster_size.0 as f64 / overview_size.0 as f64;
             overview_resolutions.push(res * scale);
         }
+        // incase overview not in sequence...
+        overview_resolutions.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         Ok(Self {
             path,

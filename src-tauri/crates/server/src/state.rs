@@ -225,6 +225,7 @@ impl State {
         map.driver_name = Some(src.driver().short_name());
 
         let raster = Raster::from_src(path.to_path_buf(), &src)?;
+        println!("raster: {:?}", raster);
 
         let geo = raster.geo();
         map.geotransform = Some(geo.clone());
