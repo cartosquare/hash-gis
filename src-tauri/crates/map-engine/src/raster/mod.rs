@@ -103,7 +103,7 @@ impl Raster {
     /// already opened a `Dataset`.
     pub fn from_src(path: PathBuf, src: &Dataset) -> Result<Self, MapEngineError> {
         let geo = src.geo_transform()?;
-        let res = geo[1];
+        let mut res = geo[1];
         let geo = GeoTransform::from_gdal(&geo);
         // raster min/max statistics
         let mut min_max: Vec<(f64, f64)> = vec![];
@@ -114,17 +114,16 @@ impl Raster {
             min_max.push((minmax.min + skip, minmax.max - skip));
         }
 
-        // raster resolution in 3857
+        // raster resolution in metre
         let raster_size = src.raster_size();
-        let mercator_crs = SpatialRef::from_epsg(3857)?;
         let crs = src.spatial_ref()?;
-        mercator_crs.set_axis_mapping_strategy(0);
-        crs.set_axis_mapping_strategy(0);
-        //let res_trans = gdal::spatial_ref::CoordTransform::new(&crs, &mercator_crs)?;
-        let mut res_m = ([res], [res], [0.0]);
-        // println!("before trans: {:?}", res_m);
-        //res_trans.transform_coords(&mut res_m.0, &mut res_m.1, &mut res_m.2)?;
-        // println!("after trans: {:?}", res_m);
+        let unit_name = crs.linear_units_name()?;
+        if unit_name.to_lowercase() == "degree" || crs.is_geographic() {
+            res *= 2.0 * PI * RE / 360.0;
+        } else {
+            // println!("linear units: {}, {}", crs.is_projected(), crs.linear_units());
+            res *= crs.linear_units();
+        }
 
         // overview resolutions
         let band = src.rasterband(1)?;
@@ -134,7 +133,7 @@ impl Raster {
             let overview = band.overview(overview_index as isize)?;
             let overview_size = overview.size();
             let scale = raster_size.0 as f64 / overview_size.0 as f64;
-            overview_resolutions.push(res_m.0[0] * scale);
+            overview_resolutions.push(res * scale);
         }
 
         Ok(Self {
@@ -145,7 +144,7 @@ impl Raster {
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
             min_max,
-            resolution: res_m.0[0],
+            resolution: res,
             overview_resolutions: overview_resolutions,
         })
     }

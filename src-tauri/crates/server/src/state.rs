@@ -240,7 +240,7 @@ impl State {
         let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
         let maxy = geo.geo[5];
         let miny = geo.geo[5] + map.extent.unwrap().height as f64 * geo.geo[4];
-        println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
         spatial_ref.set_axis_mapping_strategy(0);
@@ -254,10 +254,10 @@ impl State {
         transform
             .transform_coords(&mut xs, &mut ys, &mut zs)
             .unwrap();
-        println!(
-            "after transform: {}, {}, {}, {}",
-            ys[1], xs[0], ys[0], xs[1]
-        );
+        // println!(
+        //     "after transform: {}, {}, {}, {}",
+        //     ys[1], xs[0], ys[0], xs[1]
+        // );
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
@@ -275,7 +275,7 @@ impl State {
                 vmax: None,
                 vmin: None,
             });
-            println!("auto add map style: {:?}", map.style);
+            // println!("auto add map style: {:?}", map.style);
         }
         if map.style.is_none() && raster.raster_count() < 3 {
             let min_max = raster.min_max();
@@ -286,7 +286,7 @@ impl State {
                 vmin: Some(min_max[0].0),
                 vmax: Some(min_max[0].1),
             });
-            println!("auto add map style: {:?}", map.style);
+            // println!("auto add map style: {:?}", map.style);
         }
 
         State::validate_no_data_values(&src, map)?;
@@ -328,7 +328,7 @@ impl State {
         let maxx = extent.MaxX;
         let maxy = extent.MaxY;
         let miny = extent.MinY;
-        println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
         let target_spatial_ref = SpatialRef::from_epsg(4326)?;
         spatial_ref.set_axis_mapping_strategy(0);
@@ -341,10 +341,10 @@ impl State {
         transform
             .transform_coords(&mut xs, &mut ys, &mut zs)
             .unwrap();
-        println!(
-            "after transform: {}, {}, {}, {}",
-            ys[1], xs[0], ys[0], xs[1]
-        );
+        // println!(
+        //     "after transform: {}, {}, {}, {}",
+        //     ys[1], xs[0], ys[0], xs[1]
+        // );
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         // map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
