@@ -207,6 +207,8 @@ impl Tile {
 
         let wgs84_crs = gdal::spatial_ref::SpatialRef::from_epsg(4326)?;
 
+        wgs84_crs.set_axis_mapping_strategy(0);
+        spatial_ref.set_axis_mapping_strategy(0);
         let vertex_trans = gdal::spatial_ref::CoordTransform::new(&wgs84_crs, &spatial_ref)?;
 
         let vertices = self.vertices();
@@ -216,9 +218,9 @@ impl Tile {
         let mut zs = [0.0f64; 4];
 
         // Transform vertices to raster CRS
-        vertex_trans.transform_coords(&mut ys, &mut xs, &mut zs)?;
+        vertex_trans.transform_coords(&mut xs, &mut ys, &mut zs)?;
 
-        let offset = get_vertices_offset(self.z, &src_spatial_units)?;
+        let offset: [(f64, f64); 4] = get_vertices_offset(self.z, &src_spatial_units)?;
 
         let row_cols = get_row_cols(&xs, &ys, &offset, geo, &src_spatial_units);
 
@@ -248,12 +250,12 @@ fn get_row_cols(
         .zip(ys)
         .zip(offset)
         .map(|((x, y), (x_off, y_off))| {
-            if src_spatial_units == "metre" {
+            //if src_spatial_units == "metre" {
                 // TODO: Find out why x,y gets shifted to y,x
-                geo.rowcol(y + y_off, x + x_off).unwrap()
-            } else {
+            //    geo.rowcol(y + y_off, x + x_off).unwrap()
+            //} else {
                 geo.rowcol(x + x_off, y + y_off).unwrap()
-            }
+            //}
         })
         .collect()
 }
@@ -264,6 +266,8 @@ fn get_vertices_offset(
 ) -> Result<[(f64, f64); 4], MapEngineError> {
     let mercator_crs = SpatialRef::from_epsg(3857)?;
     let wgs84_crs = gdal::spatial_ref::SpatialRef::from_epsg(4326).unwrap();
+    mercator_crs.set_axis_mapping_strategy(0);
+    wgs84_crs.set_axis_mapping_strategy(0);
     let tile_res_trans = CoordTransform::new(&mercator_crs, &wgs84_crs).unwrap();
     let tile_z2: f64 = 2u32.pow(zoom).into();
     let tile_res = (2.0 * PI * RE / TILE_SIZE as f64) / tile_z2;
@@ -279,7 +283,10 @@ fn get_vertices_offset(
         .unwrap();
 
     // Shift
-    let offset_prop = 0.01;
+    // TODO: figure out why shift is needed.
+    // let offset_prop = 0.01;
+    let offset_prop: f64 = 0.0;
+
     let offset = if src_spatial_units == "metre" {
         // NOTE: shift tuple
         [

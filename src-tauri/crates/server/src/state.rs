@@ -155,6 +155,8 @@ impl State {
             println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
             let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+            spatial_ref.set_axis_mapping_strategy(0);
+            target_spatial_ref.set_axis_mapping_strategy(0);
             let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
             map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
 

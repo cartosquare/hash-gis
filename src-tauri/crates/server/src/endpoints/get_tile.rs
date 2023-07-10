@@ -39,6 +39,8 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
         }
 
         // println!("Processing {:?} ({:?}) for {:?}", tile, ext, map_name);
+        // println!("map: {:?}", req_map);
+        // println!("style: {:?}", style_gradient);
 
         let bands = req_map.get_bands();
         let no_data_value = req_map.get_no_data_values();

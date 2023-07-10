@@ -77,6 +77,8 @@ impl Window {
     ) -> (f64, f64, f64, f64) {
         let spatial_ref = spatial_info.to_spatial_ref().unwrap();
         let wgs84_crs = gdal::spatial_ref::SpatialRef::from_epsg(4326).unwrap();
+        spatial_ref.set_axis_mapping_strategy(0);
+        wgs84_crs.set_axis_mapping_strategy(0);
         let vertex_trans =
             gdal::spatial_ref::CoordTransform::new(&spatial_ref, &wgs84_crs).unwrap();
         let (left, top, right, bottom) = self.bounds(geo);
