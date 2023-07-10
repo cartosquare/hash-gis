@@ -106,4 +106,9 @@ mod test {
     async fn test_get_tile_16bit_1band_epsg32650_nodataunset() {
         test_get_tile(11, 1698, 859, "16bit_1band_epsg32650_nodataunset".into()).await;
     }
+
+    #[async_std::test]
+    async fn test_get_tile_big_image() {
+        test_get_tile(9, 426, 201, "big_image".into()).await;
+    }
 }

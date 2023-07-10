@@ -11,15 +11,19 @@ use crate::{
 use gdal::{
     raster::{GdalType, RasterBand, ResampleAlg},
     spatial_ref::SpatialRef,
-    Dataset,
-    DriverManager,
+    Dataset, DriverManager,
 };
 use ndarray::{s, Array, Array2, Array3};
 use num_traits::{Num, NumCast};
 pub use pixels::{driver::MBTILES, RawPixels, StyledPixels};
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
+
+use std::f64::consts::PI;
+
+const RE: f64 = 6378137.0;
+const EPSILON: f64 = 1e-14;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SpatialInfo {
@@ -35,7 +39,7 @@ impl SpatialInfo {
             Ok(data) => Some(data),
             _ => None,
         };
-        let wkt: Option<String> =  match spatial_ref.to_wkt() {
+        let wkt: Option<String> = match spatial_ref.to_wkt() {
             Ok(data) => Some(data),
             _ => None,
         };
@@ -49,12 +53,14 @@ impl SpatialInfo {
             wkt,
             proj4,
             esri: None,
-            }
+        }
     }
 
     pub fn to_spatial_ref(&self) -> Result<SpatialRef, MapEngineError> {
         if self.epsg_code.is_some() {
-            Ok(SpatialRef::from_epsg(self.epsg_code.clone().unwrap() as u32)?)
+            Ok(SpatialRef::from_epsg(
+                self.epsg_code.clone().unwrap() as u32
+            )?)
         } else if self.proj4.is_some() {
             Ok(SpatialRef::from_proj4(&self.proj4.clone().unwrap())?)
         } else if self.wkt.is_some() {
@@ -77,6 +83,8 @@ pub struct Raster {
     raster_count: isize,
     raster_size: (usize, usize),
     min_max: Vec<(f64, f64)>,
+    resolution: f64,
+    overview_resolutions: Vec<f64>,
 }
 
 impl Raster {
@@ -86,14 +94,47 @@ impl Raster {
     /// as a cache to avoid constantly reading from the file.
     pub fn new(path: PathBuf) -> Result<Self, MapEngineError> {
         let src = Dataset::open(&path)?;
+        Raster::from_src(path, &src)
+    }
+
+    /// Create a new `Raster` from an open [`Dataset`].
+    ///
+    /// Usually, you would want to use `Raster::new` but this method is available in case you
+    /// already opened a `Dataset`.
+    pub fn from_src(path: PathBuf, src: &Dataset) -> Result<Self, MapEngineError> {
         let geo = src.geo_transform()?;
+        let res = geo[1];
         let geo = GeoTransform::from_gdal(&geo);
+        // raster min/max statistics
         let mut min_max: Vec<(f64, f64)> = vec![];
         for b in 1..=src.raster_count() {
             let band = src.rasterband(b)?;
             let minmax = band.compute_raster_min_max(true)?;
             let skip = (minmax.max - minmax.min) * 0.02;
             min_max.push((minmax.min + skip, minmax.max - skip));
+        }
+
+        // raster resolution in 3857
+        let raster_size = src.raster_size();
+        let mercator_crs = SpatialRef::from_epsg(3857)?;
+        let crs = src.spatial_ref()?;
+        mercator_crs.set_axis_mapping_strategy(0);
+        crs.set_axis_mapping_strategy(0);
+        //let res_trans = gdal::spatial_ref::CoordTransform::new(&crs, &mercator_crs)?;
+        let mut res_m = ([res], [res], [0.0]);
+        // println!("before trans: {:?}", res_m);
+        //res_trans.transform_coords(&mut res_m.0, &mut res_m.1, &mut res_m.2)?;
+        // println!("after trans: {:?}", res_m);
+
+        // overview resolutions
+        let band = src.rasterband(1)?;
+        let overviews = band.overview_count()?;
+        let mut overview_resolutions: Vec<f64> = vec![];
+        for overview_index in 0..overviews {
+            let overview = band.overview(overview_index as isize)?;
+            let overview_size = overview.size();
+            let scale = raster_size.0 as f64 / overview_size.0 as f64;
+            overview_resolutions.push(res_m.0[0] * scale);
         }
 
         Ok(Self {
@@ -104,33 +145,8 @@ impl Raster {
             raster_count: src.raster_count(),
             raster_size: src.raster_size(),
             min_max,
-        })
-    }
-
-    /// Create a new `Raster` from an open [`Dataset`].
-    ///
-    /// Usually, you would want to use `Raster::new` but this method is available in case you
-    /// already opened a `Dataset`.
-    pub fn from_src(path: PathBuf, src: &Dataset) -> Result<Self, MapEngineError> {
-        let geo = src.geo_transform()?;
-        let geo = GeoTransform::from_gdal(&geo);
-        let spatial_ref = src.spatial_ref()?;
-
-        let mut min_max: Vec<(f64, f64)> = vec![];
-        for b in 1..=src.raster_count() {
-            let band = src.rasterband(b)?;
-            let minmax = band.compute_raster_min_max(true)?;
-            min_max.push((minmax.min, minmax.max));
-        }
-
-        Ok(Self {
-            path,
-            geo,
-            spatial_info: SpatialInfo::from_spatial_ref(&spatial_ref),
-            driver_name: src.driver().short_name(),
-            raster_count: src.raster_count(),
-            raster_size: src.raster_size(),
-            min_max,
+            resolution: res_m.0[0],
+            overview_resolutions: overview_resolutions,
         })
     }
 
@@ -171,9 +187,37 @@ impl Raster {
     {
         let src = Dataset::open(&self.path)?;
         let driver_name = self.driver_name();
-        // let tile_size = TILE_SIZE as usize;
-        let geo = self.geo();
-        let (mut win, is_skewed) = tile.to_window(self)?;
+        // decide best overview
+        let tile_z2: f64 = 2u32.pow(tile.z).into();
+        let tile_res = (2.0 * PI * RE / TILE_SIZE as f64) / tile_z2;
+        // println!("tile res for level: {} -> {}", tile.z, tile_res);
+        let mut best_overview: isize = -1;
+        let overviews = self.overview_resolutions.len();
+        for i in 0..overviews {
+            let res = self.overview_resolutions[overviews - i - 1];
+            if tile_res >= res {
+                best_overview = (overviews - i - 1) as isize;
+                break;
+            }
+        }
+        // if best_overview != -1 {
+        //     println!("use overview #{}, with resolution: {}", best_overview, self.overview_resolutions[best_overview as usize]);
+        // }
+
+        let geo_old = self.geo();
+        let mut geo_vec = geo_old.to_array();
+        if best_overview != -1 {
+            let scale = self.overview_resolutions[best_overview as usize] / self.resolution;
+            geo_vec[0] *= scale;
+            geo_vec[4] *= scale;
+            // for _ in 0..=best_overview {
+            //     geo_vec[0] = geo_vec[0] * 2.0;
+            //     geo_vec[4] = geo_vec[4] * 2.0;
+            // }
+        }
+        let geo = GeoTransform::new(&geo_vec);
+
+        let (mut win, is_skewed) = tile.to_window(self, &geo)?;
         // println!("win: {:?}, is_skewed: {:?}", win, is_skewed);
         let tile_bounds_xy = tile.bounds_xy();
         // println!("tile_bounds_xy: {:?}", tile_bounds_xy);
@@ -190,13 +234,20 @@ impl Raster {
         let mut container_arr = Array3::<P>::zeros((bands.len(), TILE_SIZE, TILE_SIZE));
 
         for (out_idx, band_index) in bands.iter().enumerate() {
-            let band = src.rasterband(*band_index)?;
+            let band = match best_overview {
+                -1 => src.rasterband(*band_index)?,
+                _ => src.rasterband(*band_index)?.overview(best_overview)?
+            };
 
+            let (raster_w, raster_h) = band.size();
+            let raster_win = Window::new(0, 0, raster_w, raster_h);
+
+            // println!("try boundless");
             let band_data = try_boundless(
-                &src,
                 &band,
                 &win,
-                geo,
+                &raster_win,
+                &geo,
                 &self.spatial_info,
                 tile_bounds_xy,
                 is_skewed,
@@ -205,17 +256,19 @@ impl Raster {
             let band_data = if let Some(d) = band_data {
                 d
             } else {
+                // println!("try overview");
                 try_overview(
                     &band,
                     &win,
                     // req_overview as f64,
-                    geo,
+                    &geo,
                     &self.spatial_info,
                     tile_bounds_xy,
                     is_skewed,
                     e_resample_alg,
                 )?
             };
+            // println!("try ends");
 
             // println!("read band data : {:?}", band_data.dim());
             container_arr
@@ -263,7 +316,7 @@ impl Raster {
     pub fn intersects(&self, tile: &Tile) -> Result<bool, MapEngineError> {
         let (raster_w, raster_h) = self.raster_size();
         let raster_win = Window::new(0, 0, raster_w, raster_h);
-        Ok(intersection(&[raster_win, tile.to_window(self)?.0]).is_some())
+        Ok(intersection(&[raster_win, tile.to_window(self, self.geo())?.0]).is_some())
     }
 }
 
@@ -315,8 +368,10 @@ where
 {
     let dst_shape = &destination.shape();
     let dst_shape = (dst_shape[0], dst_shape[1]);
-    let src_dataset = array_to_mem_dataset(source, src_transform, src_spatial_info, "/tmp/src.tif")?;
-    let dst_dataset = array_to_mem_dataset(destination, dst_transform, dst_spatial_info, "/tmp/dst.tif")?;
+    let src_dataset =
+        array_to_mem_dataset(source, src_transform, src_spatial_info, "/tmp/src.tif")?;
+    let dst_dataset =
+        array_to_mem_dataset(destination, dst_transform, dst_spatial_info, "/tmp/dst.tif")?;
     gdal::raster::reproject(&src_dataset, &dst_dataset)?;
 
     let dst_band = dst_dataset.rasterband(1)?;
@@ -344,15 +399,18 @@ where
 {
     let win_geo = win.geotransform(geo).to_gdal();
 
+    // println!("read window: {:?}, {:?}", win, band.size());
     let d = band.read_as::<N>(
         (win.col_off, win.row_off),
         (win.width as usize, win.height as usize),
         (win.width as usize, win.height as usize),
         e_resample_alg,
     )?;
+    // println!("read window xx");
 
     let arr = Array::from_iter(d.data).into_shape((win.width as usize, win.height as usize))?;
 
+    // println!("win_geo: {:?}", win_geo);
     let res_x = win_geo.geo[1];
     let res_y = win_geo.geo[5];
     let (min_x, max_y, max_x, min_y) = tile_bounds_xy;
@@ -360,8 +418,22 @@ where
     let dst_cols = ((max_x - min_x) / res_x) as usize;
     let dst_rows = ((max_y - min_y) / -res_y) as usize;
     let dst_shape = (dst_cols, dst_rows);
+    // println!("dst shape: {:?}", dst_shape);
     let dst_arr = Array2::<N>::zeros(dst_shape);
-    reproject(arr, &win_geo, spatial_info, dst_arr, mercator_geo, &SpatialInfo { epsg_code: Some(3857), proj4: None, wkt: None, esri: None })
+    // println!("into reproj");
+    reproject(
+        arr,
+        &win_geo,
+        spatial_info,
+        dst_arr,
+        mercator_geo,
+        &SpatialInfo {
+            epsg_code: Some(3857),
+            proj4: None,
+            wkt: None,
+            esri: None,
+        },
+    )
 }
 
 fn try_overview<N>(
@@ -395,9 +467,10 @@ where
 // Read pixels within a Window
 #[allow(clippy::too_many_arguments)]
 fn try_boundless<N>(
-    src: &Dataset,
+    // src: &Dataset,
     band: &RasterBand,
     win: &Window,
+    raster_win: &Window,
     geo: &GeoTransform,
     spatial_info: &SpatialInfo,
     tile_bounds_xy: (f64, f64, f64, f64),
@@ -408,10 +481,7 @@ where
     N: GdalType + Copy + Num + NumCast,
     N: ndarray::ScalarOperand,
 {
-    let (raster_w, raster_h) = src.raster_size();
-    // println!("src dim: {}x{}", raster_w, raster_h);
-    let raster_win = Window::new(0, 0, raster_w, raster_h);
-    let inter = intersection(&[raster_win, *win]);
+    let inter = intersection(&[*raster_win, *win]);
 
     // println!("inter: {:?}", inter);
     if let Some(inter) = inter {
@@ -444,9 +514,18 @@ where
         win.height as f64 / inter.height as f64,
     );
     // println!("factor: {:?}", factor);
+    // println!("is skewed: {:?}", is_skewed);
 
     let data = if is_skewed {
-        read_and_reproject(band, &inter, geo, spatial_info, tile_bounds_xy, e_resample_alg)
+        // println!("read and reproject");
+        read_and_reproject(
+            band,
+            &inter,
+            geo,
+            spatial_info,
+            tile_bounds_xy,
+            e_resample_alg,
+        )
     } else {
         let into_shape = (
             (TILE_SIZE as f64 / factor.0).floor() as usize,
@@ -461,8 +540,9 @@ where
         )
         .map_err(From::from)
     }
-    .unwrap_or_else(|_| panic!("Cannot read window {:?} from {:?}", inter, src));
+    .unwrap_or_else(|_| panic!("Cannot read window {:?}", inter));
 
+    // println!("read finish");
     let col_off = if win.col_off < 0 {
         (TILE_SIZE as f64 * (win.col_off as f64 / win.width as f64) - 1.0).trunc() as isize
     } else {

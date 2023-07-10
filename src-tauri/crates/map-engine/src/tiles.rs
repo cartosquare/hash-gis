@@ -197,8 +197,7 @@ impl Tile {
     /// # Arguments
     ///
     /// * `raster` - `Raster` used for the conversion.
-    pub fn to_window(&self, raster: &Raster) -> Result<(Window, bool), MapEngineError> {
-        let geo = raster.geo();
+    pub fn to_window(&self, raster: &Raster, geo: &GeoTransform) -> Result<(Window, bool), MapEngineError> {
         let spatial_ref = raster.spatial_ref()?;
 
         let src_spatial_units = spatial_ref
@@ -287,7 +286,7 @@ fn get_vertices_offset(
     // let offset_prop = 0.01;
     let offset_prop: f64 = 0.0;
 
-    let offset = if src_spatial_units == "metre" {
+    let offset = if src_spatial_units == "meter" {
         // NOTE: shift tuple
         [
             (
