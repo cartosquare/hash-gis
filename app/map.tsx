@@ -54,7 +54,7 @@ export default function MapSquare() {
       {
         mapLayers.layers.map((s, index) => s.show && (
           <TileLayer key={index}
-            url={`http://localhost:8080/${s.name}/{z}/{x}/{y}.png`}
+            url={`http://localhost:28904/${s.name}/{z}/{x}/{y}.png`}
           />
         ))
       }

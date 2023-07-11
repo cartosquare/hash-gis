@@ -157,7 +157,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
         }
 
         try {
-            const rawResponse = await fetch<MapSettings>(`http://localhost:8080/map`, {
+            const rawResponse = await fetch<MapSettings>(`http://localhost:28904/map`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
