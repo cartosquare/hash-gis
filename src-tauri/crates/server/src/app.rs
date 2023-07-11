@@ -83,6 +83,11 @@ mod test {
     }
 
     #[async_std::test]
+    async fn test_get_tile_8bit_3bands_epsg4490_nodataunset_autooverview() {
+        test_get_tile(10, 837, 406, "8bit_3bands_epsg4490_nodataunset".into()).await;
+    }
+
+    #[async_std::test]
     async fn test_get_tile_8bit_3bands_cgcs2000_nodata255() {
         test_get_tile(15, 26749, 13023, "8bit_3bands_cgcs2000_nodata255".into()).await;
     }
@@ -110,5 +115,10 @@ mod test {
     #[async_std::test]
     async fn test_get_tile_big_image() {
         test_get_tile(9, 426, 201, "big_image".into()).await;
+    }
+
+    #[async_std::test]
+    async fn test_get_tile_big_image_no_overview() {
+        test_get_tile(9, 426, 201, "big_image_no_overview".into()).await;
     }
 }

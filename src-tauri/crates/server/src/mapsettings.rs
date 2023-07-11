@@ -29,6 +29,8 @@ pub struct MapSettings {
     pub spatial_units: Option<String>,
     /// wgs84 bounds
     pub bounds: Option<[f64; 4]>,
+    /// Has overview or not
+    pub has_overview: Option<bool>,
 }
 
 impl MapSettings {

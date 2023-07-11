@@ -314,6 +314,10 @@ impl Raster {
         self.min_max.clone()
     }
 
+    pub fn has_overview(&self) -> bool {
+        self.overview_resolutions.len() > 0
+    }
+
     pub fn intersects(&self, tile: &Tile) -> Result<bool, MapEngineError> {
         let (raster_w, raster_h) = self.raster_size();
         let raster_win = Window::new(0, 0, raster_w, raster_h);
@@ -398,18 +402,29 @@ fn read_and_reproject<N>(
 where
     N: GdalType + Copy + Num,
 {
-    let win_geo = win.geotransform(geo).to_gdal();
+    let mut win_geo = win.geotransform(geo).to_gdal();
 
-    // println!("read window: {:?}, {:?}", win, band.size());
+    // dynamic resample tile data
+    let mut target_width = win.width;
+    let mut target_height = win.height;
+    while target_width > 1024 || target_height > 1024 {
+        target_width /= 2;
+        target_height /= 2;
+        win_geo.geo[1] *= 2.0;
+        win_geo.geo[5] *= 2.0;
+    }
+
+    // println!("read window: {:?}, {:?} => {:?}", win, band.size(), (target_width, target_height));
     let d = band.read_as::<N>(
         (win.col_off, win.row_off),
         (win.width as usize, win.height as usize),
-        (win.width as usize, win.height as usize),
+        // (win.width as usize, win.height as usize),
+        (target_width as usize, target_height as usize),
         e_resample_alg,
     )?;
-    // println!("read window xx");
 
-    let arr = Array::from_iter(d.data).into_shape((win.width as usize, win.height as usize))?;
+    let arr = Array::from_iter(d.data).into_shape((target_width as usize, target_height as usize))?;
+    // let arr = Array::from_iter(d.data).into_shape((win.width as usize, win.height as usize))?;
 
     // println!("win_geo: {:?}", win_geo);
     let res_x = win_geo.geo[1];

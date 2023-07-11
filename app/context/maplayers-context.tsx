@@ -91,6 +91,12 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
         const newMaplayer = await createMapLayer(filepath, geoType);
         if (newMaplayer) {
             newMaplayer.show = true;
+            if (newMaplayer.extent 
+                && (newMaplayer.extent.width > 20000 || newMaplayer.extent.height > 20000)
+                && !newMaplayer.has_overview) {
+                    newMaplayer.show = true;
+                    message("为了获得更流畅的浏览体验，请先对数据建立金字塔。", {title: "数据没有金字塔", type: "info"});
+                }
             setMapLayers([...mapLayers, newMaplayer]);
         }
     }
@@ -109,6 +115,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             driver_name: null,
             bounds: null,
             show: true,
+            has_overview: false,
         };
 
         const colors = [

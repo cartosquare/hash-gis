@@ -148,6 +148,8 @@ impl State {
             let spatial_units = spatial_ref.linear_units_name()?;
             map.spatial_units = Some(spatial_units);
 
+            map.has_overview = Some(raster.has_overview());
+
             // bounds
             let minx = geo.geo[2];
             let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
@@ -235,6 +237,7 @@ impl State {
 
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
+        map.has_overview = Some(raster.has_overview());
 
         // bounds
         let minx = geo.geo[2];

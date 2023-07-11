@@ -80,4 +80,5 @@ export interface MapSettings {
     spatial_units: string | null,
     bounds: number[] | null,
     show: boolean,
+    has_overview: boolean | null,
 }
