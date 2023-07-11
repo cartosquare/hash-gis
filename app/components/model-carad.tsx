@@ -1,4 +1,5 @@
-
+import { useEffect, useState } from "react"
+import { convertFileSrc } from '@tauri-apps/api/tauri';
 
 export default function ModelCard({
     img,
@@ -13,9 +14,19 @@ export default function ModelCard({
     tags: string[],
     isNew: boolean,
 }) {
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        const assetUrl = convertFileSrc(img)
+        setImageUrl(assetUrl);
+    }, [img])
+
+    const addDefaultSrc = (ev: any) => {
+        ev.target.src = '/building.png';
+    }
     return (
         <div className="card w-64 bg-base-100 shadow-xl h-full">
-            <figure><img src={img} alt="model" /></figure>
+            <figure><img src={imageUrl ? imageUrl : '/building.png'} alt="model" onError={addDefaultSrc} /></figure>
             <div className="card-body">
                 <h2 className="card-title">
                     {title}

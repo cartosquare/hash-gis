@@ -23,9 +23,9 @@ export default function Home() {
   }
 
   useEffect(() => {
-    invoke("app_config")
+    invoke<ModelConfig>("app_config")
       .then((config) => {
-        setAppConfig(config as ModelConfig);
+        setAppConfig(config);
       })
       .catch((msg) => {
         console.log("error: ", msg);
@@ -49,7 +49,7 @@ export default function Home() {
                   title={model.name}
                   description={model.description}
                   tags={model.tags}
-                  isNew={true}
+                  isNew={false}
                 />
               </a>
             ))
