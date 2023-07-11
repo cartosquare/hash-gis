@@ -81,4 +81,5 @@ export interface MapSettings {
     bounds: number[] | null,
     show: boolean,
     has_overview: boolean | null,
+    geo_type: string,
 }

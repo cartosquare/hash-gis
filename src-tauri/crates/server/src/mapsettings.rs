@@ -31,6 +31,8 @@ pub struct MapSettings {
     pub bounds: Option<[f64; 4]>,
     /// Has overview or not
     pub has_overview: Option<bool>,
+    /// Geo type: vector or raster
+    pub geo_type: String,
 }
 
 impl MapSettings {

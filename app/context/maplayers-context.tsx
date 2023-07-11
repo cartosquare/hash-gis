@@ -116,46 +116,8 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             bounds: null,
             show: true,
             has_overview: false,
+            geo_type: geoType,
         };
-
-        const colors = [
-            '#8e0152',
-            '#c51b7d',
-            '#de77ae',
-            '#f1b6da',
-            '#fde0ef',
-            '#e6f5d0',
-            '#b8e186',
-            '#7fbc41',
-            '#4d9221',
-            '#276419'];
-
-        if (geoType == "vector") {
-            const color = colors[Math.floor(Math.random() * colors.length)];
-
-            console.log('color', color);
-            const style = `
-<Map srs="epsg:3857">
-	<Style name="My Style">
-		<Rule>
-			<PolygonSymbolizer fill="${color}" fill-opacity="0.5"/>
-			<LineSymbolizer stroke="${color}" stroke-opacity="1" stroke-width="1"/>
-		</Rule>
-	</Style>
-	<Layer name="" srs="epsg:4326">
-		<StyleName>My Style</StyleName>
-		<Datasource>
-			<Parameter name="file">${filepath}</Parameter>
-			<Parameter name="layer_by_index">0</Parameter>
-			<Parameter name="type">ogr</Parameter>
-		</Datasource>
-	</Layer>
-</Map>
-    `
-            bodyData.xml = style;
-
-        }
-
         try {
             const rawResponse = await fetch<MapSettings>(`http://localhost:28904/map`, {
                 method: 'POST',

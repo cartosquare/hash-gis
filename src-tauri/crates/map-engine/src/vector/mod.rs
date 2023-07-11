@@ -168,6 +168,16 @@ impl Vector {
     }
 }
 
+impl Map {
+    pub fn from_xml(xml: &String) -> Result<Self, MapEngineError> {
+        Ok(from_str(&xml)?)
+    }
+
+    pub fn to_xml(&self) -> Result<String, MapEngineError> {
+        Ok(to_string(&self)?)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
