@@ -8,13 +8,13 @@ import { createLeafletBounds } from "../utils";
 
 export const MapLegend = () => {
     const map = useMap();
-    const { layers, createLayer, deleteLayer, toggleLayer, randomLayerColor } = useMapLayers();
+    const mapLayers = useMapLayers();
 
     useEffect(() => {
     }, [])
 
     const zoomToLayer = (index: number) => {
-        map.fitBounds(createLeafletBounds(layers[index].bounds as number[]));
+        map.fitBounds(createLeafletBounds(mapLayers.data.layers[index].bounds as number[]));
     }
 
     // Memoize the minimap so it's not affected by position changes
@@ -22,8 +22,8 @@ export const MapLegend = () => {
         () => (
             <div className="flex flex-col m-4 bg-base-300 opacity-90 shadow-md">
                 {
-                    layers.map((s: MapSettings, i: number) => {
-                        const index = layers.length - i - 1;
+                    mapLayers.data.layers.map((s: MapSettings, i: number) => {
+                        const index = mapLayers.data.layers.length - i - 1;
                         return (
                             <div
                                 key={index}
@@ -32,21 +32,21 @@ export const MapLegend = () => {
                                     <input
                                         type="checkbox"
                                         defaultChecked
-                                        onClick={() => { toggleLayer(index) }}
+                                        onClick={() => { mapLayers.toggleLayer(index) }}
                                         className="toggle toggle-secondary">
                                     </input>
                                 </div>
 
                                 <div className="flex items-center px-2">
                                     <p className="text-center">
-                                        {`${layers[index].path.replace(/^.*[\\\/]/, '')}`}
+                                        {`${mapLayers.data.layers[index].path.replace(/^.*[\\\/]/, '')}`}
                                     </p>
                                 </div>
 
                                 <div className="flex grow justify-end">
                                     <button
-                                        onClick={() => { randomLayerColor(index) }}
-                                        disabled={layers[index].xml ? false : true}
+                                        onClick={() => { mapLayers.refreshLayer(index) }}
+                                        disabled={mapLayers.data.layers[index].geo_type == "raster"}
                                         className="btn btn-ghost btn-xs">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-tabler icon-tabler-edit w-5 h-5" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#9e9e9e" fill="none" strokeLinecap="round" strokeLinejoin="round">
                                             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
@@ -78,7 +78,7 @@ export const MapLegend = () => {
                                 {/* // <div className="flex"> */}
 
                                     <button
-                                        onClick={() => { deleteLayer(index) }}
+                                        onClick={() => { mapLayers.deleteLayer(index) }}
                                         className="btn btn-ghost btn-xs">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="icon icon-tabler icon-tabler-x w-5 h-5" viewBox="0 0 24 24" strokeWidth="1.5" stroke="#9e9e9e" fill="none" strokeLinecap="round" strokeLinejoin="round">
 
@@ -94,7 +94,7 @@ export const MapLegend = () => {
                 }
             </div>
         ),
-        [layers],
+        [mapLayers.data.layers],
     )
 
     return (

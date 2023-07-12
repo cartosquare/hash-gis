@@ -79,7 +79,6 @@ export interface MapSettings {
     spatial_info: SpatialInfo | null,
     spatial_units: string | null,
     bounds: number[] | null,
-    show: boolean,
     has_overview: boolean | null,
     geo_type: string,
 }

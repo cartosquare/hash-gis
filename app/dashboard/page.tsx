@@ -3,20 +3,18 @@
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { open, save, message } from "@tauri-apps/api/dialog"
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { invoke } from '../lib/tauri';
 import { listen } from '@tauri-apps/api/event';
 import { useModel } from '../context/model-context';
-import { Body, fetch } from '@tauri-apps/api/http';
-import { MapSettings, ModelOption } from '../types';
 // import MapSquare from '../map';
 import { useMapLayers } from '../context/maplayers-context';
 import { getPredictMsg } from '../utils';
+import { ModelOption } from '../types';
 
 const MapWithNoSSR = dynamic(() => import('../map'), {
   ssr: false,
 });
-
 
 interface PredictStatus {
   stage: string,
@@ -180,6 +178,8 @@ export default function Home() {
   const createPredictTask = () => {
     setPredicting(true);
 
+    const params = parsePredictionParameter();
+    console.log(params);
     invoke('predict', {
       // params: {
       //   algorithmType: "seg-post",
@@ -188,7 +188,7 @@ export default function Home() {
       //   options: ["license_server=10.112.60.244:8181", "verbose=debug"],
       //   outputPath: outputFile,
       // }
-      params: parsePredictionParameter(),
+      params,
     });
   }
 

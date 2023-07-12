@@ -5,23 +5,37 @@ import { MapSettings } from "../types";
 import { Body, fetch } from '@tauri-apps/api/http';
 import { message } from "@tauri-apps/api/dialog";
 
-type mapLayersType = {
+type mapLayersStatus = {
     layers: MapSettings[],
+    visible: boolean[],
+    initialized: boolean,
+}
+
+const defaultMapLayerStatus = (): mapLayersStatus => {
+    return {
+        layers: [],
+        visible: [],
+        initialized: false,
+    };
+}
+
+type mapLayersType = {
+    data: mapLayersStatus,
     createLayer: (filepath: string, geoType: string) => void;
     deleteLayer: (index: number) => void;
     clearLayers: () => void;
     toggleLayer: (index: number) => void;
-    randomLayerColor: (index: number) => void;
+    refreshLayer: (index: number) => void;
 }
 
 
 const mapLayersContextDefaultValue: mapLayersType = {
-    layers: [],
+    data: defaultMapLayerStatus(),
     createLayer: (filepath: string, geoType: string) => { },
     deleteLayer: (index: number) => { },
     clearLayers: () => { },
     toggleLayer: (index: number) => { },
-    randomLayerColor: (index: number) => { },
+    refreshLayer: (index: number) => { },
 };
 
 // create context
@@ -34,70 +48,80 @@ export const useMapLayers = (): mapLayersType => {
 
 // create provider
 export const MapLayersProvider = (props: PropsWithChildren) => {
-    const [mapLayers, setMapLayers] = useState<MapSettings[]>([]);
+    const [mapLayers, setMapLayers] = useState<mapLayersStatus>(defaultMapLayerStatus());
 
     const clearLayers = () => {
-        setMapLayers([]);
+        setMapLayers(defaultMapLayerStatus());
     }
 
-    const randomLayerColor = async (index: number) => {
-        if (index >= 0 && index < mapLayers.length) {
-            let path = mapLayers[index].path;
-            let layer_type = mapLayers[index].xml ? 'vector' : 'raster';
+    const refreshLayer = async (index: number) => {
+        if (index >= 0 && index < mapLayers.layers.length) {
+            let path = mapLayers.layers[index].path;
+            let layer_type = mapLayers.layers[index].geo_type
             // create new layer
             const newMapLayer = await createMapLayer(path, layer_type);
             if (newMapLayer) {
-                newMapLayer.show = true;
+                mapLayers.visible[index] = true;
 
                 let newLayers = [];
-                for (let i = 0; i < mapLayers.length; i++) {
+                for (let i = 0; i < mapLayers.layers.length; i++) {
                     if (i == index) {
                         newLayers.push(newMapLayer);
                     } else {
-                        newLayers.push(mapLayers[i])
+                        newLayers.push(mapLayers.layers[i])
                     }
                 }
-                setMapLayers(newLayers);
+                setMapLayers({
+                    ...mapLayers,
+                    layers: newLayers,
+                });
             }
         }
     }
 
     const toggleLayer = (index: number) => {
-        if (index >= 0 && index < mapLayers.length) {
-            let newLayers = [];
-            for (let i = 0; i < mapLayers.length; i++) {
+        if (index >= 0 && index < mapLayers.layers.length) {
+            for (let i = 0; i < mapLayers.layers.length; i++) {
                 if (i == index) {
-                    mapLayers[i].show = !mapLayers[i].show;
+                    mapLayers.visible[i] = !mapLayers.visible[i];
                 }
-                newLayers.push(mapLayers[i])
             }
-            setMapLayers(newLayers);
+            setMapLayers({
+                ...mapLayers
+            });
         }
     }
 
     const deleteLayer = (index: number) => {
-        if (index >= 0 && index < mapLayers.length) {
+        if (index >= 0 && index < mapLayers.layers.length) {
             let newLayers = [];
-            for (let i = 0; i < mapLayers.length; i++) {
+            for (let i = 0; i < mapLayers.layers.length; i++) {
                 if (i != index) {
-                    newLayers.push(mapLayers[i])
+                    newLayers.push(mapLayers.layers[i])
                 }
             }
-            setMapLayers(newLayers);
+            setMapLayers({
+                ...mapLayers,
+                initialized: newLayers.length > 0,
+                layers: newLayers,
+            });
         }
     }
 
     const createLayer = async (filepath: string, geoType: string) => {
         const newMaplayer = await createMapLayer(filepath, geoType);
         if (newMaplayer) {
-            newMaplayer.show = true;
-            if (newMaplayer.extent 
+            if (newMaplayer.extent
                 && (newMaplayer.extent.width > 20000 || newMaplayer.extent.height > 20000)
                 && !newMaplayer.has_overview) {
-                    newMaplayer.show = true;
-                    message("为了获得更流畅的浏览体验，请先对数据建立金字塔。", {title: "数据没有金字塔", type: "info"});
-                }
-            setMapLayers([...mapLayers, newMaplayer]);
+                message("为了获得更流畅的浏览体验，请先对数据建立金字塔。", { title: "数据没有金字塔", type: "info" });
+            }
+            setMapLayers({
+                ...mapLayers,
+                initialized: true,
+                layers: [...mapLayers.layers, newMaplayer],
+                visible: [...mapLayers.visible, true],
+            });
         }
     }
 
@@ -114,7 +138,6 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             spatial_units: null,
             driver_name: null,
             bounds: null,
-            show: true,
             has_overview: false,
             geo_type: geoType,
         };
@@ -128,7 +151,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             });
             if (rawResponse.status != 200) {
                 console.log('error', rawResponse);
-                message("加载图层失败！请检查数据有效性。", {title: "加载图层失败", type: "error"})
+                message("加载图层失败！请检查数据有效性。", { title: "加载图层失败", type: "error" })
             } else {
                 const response = rawResponse.data;
                 if (response.bounds) {
@@ -141,7 +164,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
             console.log(error);
             // toast.error(`请求失败：${error}`);
             console.log('error!', error);
-            message("加载图层失败！请检查数据有效性。", {title: "加载图层失败", type: "error"})
+            message("加载图层失败！请检查数据有效性。", { title: "加载图层失败", type: "error" })
         }
     }
 
@@ -149,12 +172,12 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
     return (
         <MapLayersContext.Provider
             value={{
-                layers: mapLayers,
+                data: mapLayers,
                 createLayer,
                 deleteLayer,
                 clearLayers,
                 toggleLayer,
-                randomLayerColor,
+                refreshLayer,
             }}
         >
             {props.children}
