@@ -159,6 +159,7 @@ pub fn app_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
     let appdir = exe_path.parent().unwrap();
 
     let mut config = data.unwrap();
+    let mut valid_models: Vec<Model> = vec![];
     for model in config.models.iter_mut() {
         if PathBuf::from(&model.icon).as_path().is_relative() {
             model.icon = appdir.join(model.icon.clone()).to_str().unwrap().into();
@@ -166,8 +167,12 @@ pub fn app_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
         if PathBuf::from(&model.model_path).as_path().is_relative() {
             model.model_path = appdir.join(model.model_path.clone()).to_str().unwrap().into();
         }
-    }
 
+        if PathBuf::from(&model.model_path).exists() {
+            valid_models.push(model.clone());
+        }
+    }
+    config.models = valid_models;
     Ok(config)
 }
 

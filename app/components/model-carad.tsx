@@ -25,14 +25,14 @@ export default function ModelCard({
         ev.target.src = '/building.png';
     }
     return (
-        <div className="card w-64 bg-base-100 shadow-xl h-full">
+        <div className="card w-64 h-96 bg-base-100 shadow-xl">
             <figure><img src={imageUrl ? imageUrl : '/building.png'} alt="model" onError={addDefaultSrc} /></figure>
             <div className="card-body">
                 <h2 className="card-title">
                     {title}
                     {isNew && <div className="badge badge-secondary">NEW</div>}
                 </h2>
-                <p>{description}</p>
+                <p className="text-justify">{description}</p>
                 <div className="card-actions justify-end">
                     {
                         tags?.map((tag, index) =>

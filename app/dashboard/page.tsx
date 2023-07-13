@@ -175,6 +175,7 @@ export default function Home() {
   }
 
   const createPredictTask = () => {
+    // if mapLayers.data.layers.length == 0)
     setPredicting(true);
 
     const params = parsePredictionParameter();
@@ -423,7 +424,7 @@ export default function Home() {
           <div className='flex justify-end pr-6'>
             <button
               onClick={createPredictTask}
-              disabled={predicting}
+              disabled={predicting && inputFile.length == 0 || outputFile == ''}
               className='btn btn-primary w-32'>启动</button>
           </div>
         </div>
