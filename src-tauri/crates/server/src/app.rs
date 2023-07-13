@@ -14,8 +14,10 @@ pub async fn run(
     port: String,
     plugin_dir: String,
     font_dir: String,
+    gdal_data: String,
 ) -> tide::Result<()> {
     Vector::mapnik_register(plugin_dir, font_dir);
+    map_engine::gdal::gdal_initialize(gdal_data);
 
     let cors = CorsMiddleware::new()
         .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())

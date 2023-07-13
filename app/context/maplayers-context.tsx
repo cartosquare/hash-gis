@@ -4,6 +4,7 @@ import { createContext, PropsWithChildren, useContext, useState } from "react";
 import { MapSettings } from "../types";
 import { Body, fetch } from '@tauri-apps/api/http';
 import { message } from "@tauri-apps/api/dialog";
+import { error } from "tauri-plugin-log-api";
 
 type mapLayersStatus = {
     layers: MapSettings[],
@@ -150,7 +151,7 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
                 body: Body.json(bodyData),
             });
             if (rawResponse.status != 200) {
-                console.log('error', rawResponse);
+                error(JSON.stringify(rawResponse));
                 message("加载图层失败！请检查数据有效性。", { title: "加载图层失败", type: "error" })
             } else {
                 const response = rawResponse.data;
@@ -161,8 +162,6 @@ export const MapLayersProvider = (props: PropsWithChildren) => {
                 }
             }
         } catch (error) {
-            console.log(error);
-            // toast.error(`请求失败：${error}`);
             console.log('error!', error);
             message("加载图层失败！请检查数据有效性。", { title: "加载图层失败", type: "error" })
         }

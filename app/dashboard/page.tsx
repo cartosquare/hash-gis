@@ -9,8 +9,8 @@ import { listen } from '@tauri-apps/api/event';
 import { useModel } from '../context/model-context';
 // import MapSquare from '../map';
 import { useMapLayers } from '../context/maplayers-context';
-import { getPredictMsg } from '../utils';
 import { ModelOption } from '../types';
+import { info, debug, warn, error } from "tauri-plugin-log-api";
 
 const MapWithNoSSR = dynamic(() => import('../map'), {
   ssr: false,
@@ -47,6 +47,7 @@ export default function Home() {
   const [predictStatus, setPredictStatus] = useState<PredictStatus | null>(null);
   const [predicting, setPredicting] = useState<boolean>(false);
   const [predictOptions, setPredictOptions] = useState<PredictOptions>(new Map());
+  const [predictMsg, setPredictMsg] = useState<string>("");
 
   const navigatorHome = () => {
     mapLayers.clearLayers();
@@ -65,7 +66,7 @@ export default function Home() {
     } else {
       message(`Invalid input type: ${option.input_type}`, { title: 'Error', type: 'error' });
     }
-    console.log('update: ', predictOptions);
+    debug(`update: ${JSON.stringify(predictOptions)}`);
     setPredictOptions(predictOptions);
   }
 
@@ -92,8 +93,6 @@ export default function Home() {
       const opt = `${option.name}=${predictOptions.get(option.name)}`;
       options.push(opt);
     });
-
-    console.log('options: ', options);
 
     return {
       algorithmType: model.post_type,
@@ -179,7 +178,7 @@ export default function Home() {
     setPredicting(true);
 
     const params = parsePredictionParameter();
-    console.log(params);
+    info(JSON.stringify(params));
     invoke('predict', {
       // params: {
       //   algorithmType: "seg-post",
@@ -208,6 +207,7 @@ export default function Home() {
         setGpuList(gpuList);
       })
       .catch((msg) => {
+        error("read GPU info fail!");
         message("读取可用GPU失败！请联系技术支持人员。", { title: '读取可用GPU失败', type: 'error' });
       })
     return () => {
@@ -227,10 +227,11 @@ export default function Home() {
       } else if (option.input_type == "text" && option.value) {
         predictOptions.set(option.name, option.value);
       } else {
+        warn(`Invalid input type: ${option.input_type}`);
         message(`Invalid input type: ${option.input_type}`, { title: 'Error', type: 'error' });
       }
     });
-    console.log("Initial options: ", predictOptions);
+    debug(`Initial options: ${JSON.stringify(predictOptions)}`);
     setPredictOptions(predictOptions);
   }, [model])
 
@@ -241,6 +242,7 @@ export default function Home() {
 
     if (predictStatus.stage == "finish") {
       if (predictStatus.fail) {
+        error("predict fail!");
         message("解译失败！请联系技术支持人员。", {"title": "解译失败", type: "error"});
       } else {
         mapLayers.createLayer(predictStatus.params.outputPath, "vector");
@@ -248,6 +250,16 @@ export default function Home() {
       setPredicting(false);
     } else {
       setPredicting(true);
+    }
+
+    if (predictStatus.stage == "loading-model") {
+        setPredictMsg("加载模型");
+    } else if (predictStatus.stage == "predicting") {
+        setPredictMsg( "解译");
+    } else if (predictStatus.stage == "postprocessing") {
+        setPredictMsg("后处理");
+    } else {
+        setPredictMsg("后处理");
     }
   }, [predictStatus])
 
@@ -426,7 +438,7 @@ export default function Home() {
             <div className='flex flex-row w-full justify-start'>
 
               <div className='w-32'>
-                <p className="">{getPredictMsg(predictStatus? predictStatus.stage : "")}</p>
+                <p className="">{predictMsg}</p>
               </div>
               <div className='w-full'>
                 <progress className="progress progress-primary" value={predictStatus ? predictStatus.progress * 100 : 0} max="100"></progress>

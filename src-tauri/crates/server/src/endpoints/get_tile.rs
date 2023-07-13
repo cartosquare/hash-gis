@@ -1,7 +1,7 @@
 use crate::state::State;
 use map_engine::{png::EMPTY_PNG, raster::RawPixels, tiles::Tile};
 use std::convert::Into;
-use tide::{http::mime, log::info, Request, Response, StatusCode};
+use tide::{http::mime, log::info, log::debug, Request, Response, StatusCode};
 
 /// Generate a tile given a XYZ URL.
 pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> {
@@ -29,18 +29,18 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
         let style_gradient = req.state().get_style(map_name).unwrap();
 
         if !raster.intersects(&tile)? {
-            // println!(
-            //     "{:?} does not intersect {}. Returning empty {}",
-            //     tile, map_name, ext
-            // );
+            info!(
+                "{:?} does not intersect {}. Returning empty {}",
+                tile, map_name, ext
+            );
             return Ok(Response::builder(StatusCode::Ok)
                 .content_type(mime::PNG)
                 .body(EMPTY_PNG.clone()));
         }
 
-        // println!("Processing {:?} ({:?}) for {:?}", tile, ext, map_name);
-        // println!("map: {:?}", req_map);
-        // println!("style: {:?}", style_gradient);
+        info!("Processing {:?} ({:?}) for {:?}", tile, ext, map_name);
+        debug!("map: {:?}", req_map);
+        debug!("style: {:?}", style_gradient);
 
         let bands = req_map.get_bands();
         let no_data_value = req_map.get_no_data_values();

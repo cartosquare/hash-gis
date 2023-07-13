@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { MapLegend } from './components/map-legend';
 import { useMapLayers } from './context/maplayers-context';
 import { createLeafletBounds } from './utils';
+import { info, debug, warn, error } from "tauri-plugin-log-api";
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: ('leaflet/images/marker-icon-2x.png'),
@@ -24,7 +25,7 @@ export function BoundsView({ bounds }: { bounds: L.LatLngBounds | undefined }) {
   const map = useMap();
 
   useEffect(() => {
-    console.log("into bounds view")
+    info("into bounds view")
     if (bounds) {
       map.fitBounds(bounds)
     }
@@ -38,7 +39,7 @@ export default function MapSquare() {
 
   // only change bounds when first layers added
   useEffect(() => {
-    console.log("layer initialized changed: ", mapLayers.data.initialized);
+    info(`layer initialized changed: ${JSON.stringify(mapLayers)}`);
     if (mapLayers.data.layers.length == 0 || !mapLayers.data.initialized) {
       return;
     }

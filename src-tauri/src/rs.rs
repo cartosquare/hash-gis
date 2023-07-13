@@ -1,5 +1,7 @@
 use sr::{AlgorithmType, SenseRemote};
-use std::{fs, path::Path};
+use std::{fs, path::Path, path::PathBuf};
+use log::{info, debug};
+use tauri::PathResolver;
 use tauri::Window;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -21,12 +23,13 @@ pub struct PredictParams {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn predict(window: Window, params: PredictParams) {
-    println!("params: {:?}", params);
+pub fn predict(window: Window, app_handle: tauri::AppHandle, params: PredictParams) {
+    info!("params: {:?}", params);
 
     let w = window.clone();
     let p = params.clone();
-
+    // let log_dir = app_handle.path_resolver().app_log_dir().unwrap();
+    // info!("log dir: {:?}", log_dir);
     std::thread::spawn(move || {
         let at = match params.algorithm_type.as_str() {
             "seg-post" => AlgorithmType::SEG_POST,
@@ -62,6 +65,7 @@ pub fn predict(window: Window, params: PredictParams) {
             },
             // String::from("D:\\windows-common-libs-v4.1.x\\4bands-testoutput.shp"),
             params.output_path,
+            // Some(log_dir.join("rs.log").to_str().unwrap().into()),
             None,
         );
         if status.is_err() {
@@ -156,11 +160,14 @@ pub fn app_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
 
     let mut config = data.unwrap();
     for model in config.models.iter_mut() {
-        model.icon = appdir.join(model.icon.clone()).to_str().unwrap().into();
-        model.model_path = appdir.join(model.model_path.clone()).to_str().unwrap().into();
+        if PathBuf::from(&model.icon).as_path().is_relative() {
+            model.icon = appdir.join(model.icon.clone()).to_str().unwrap().into();
+        }
+        if PathBuf::from(&model.model_path).as_path().is_relative() {
+            model.model_path = appdir.join(model.model_path.clone()).to_str().unwrap().into();
+        }
     }
 
-    // println!("model config: {:?}", config);
     Ok(config)
 }
 

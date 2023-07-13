@@ -1,4 +1,5 @@
 use crate::{mapsettings::MapSettings, style::Style};
+use log::debug;
 use map_engine::{
     cmap::{ColourDefinition, Composite},
     errors::MapEngineError,
@@ -228,28 +229,37 @@ impl State {
         map.driver_name = Some(src.driver().short_name());
 
         let raster = Raster::from_src(path.to_path_buf(), &src)?;
-        println!("raster: {:?}", raster);
+        debug!("raster: {:?}", raster);
 
         let geo = raster.geo();
         map.geotransform = Some(geo.clone());
 
+        debug!("get spatial ref");
         let spatial_ref = raster.spatial_ref()?;
         map.spatial_info = Some(raster.spatial_info());
 
+        debug!("get spatial ref unit");
         let spatial_units = spatial_ref.linear_units_name()?;
         map.spatial_units = Some(spatial_units);
         map.has_overview = Some(raster.has_overview());
+        debug!("get spatial done");
 
         // bounds
         let minx = geo.geo[2];
         let maxx = geo.geo[2] + map.extent.unwrap().width as f64 * geo.geo[0];
         let maxy = geo.geo[5];
         let miny = geo.geo[5] + map.extent.unwrap().height as f64 * geo.geo[4];
-        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
+        debug!("{}, {}, {}, {}", minx, maxx, miny, maxy);
 
-        let target_spatial_ref = SpatialRef::from_epsg(4326)?;
+        let x = std::env::var("PROJ_LIB");
+        debug!("env: {:?}", x);
+
+        let target_spatial_ref_result = SpatialRef::from_epsg(4326);
+        debug!("{:?}", target_spatial_ref_result);
+        let target_spatial_ref = target_spatial_ref_result?;
         spatial_ref.set_axis_mapping_strategy(0);
         target_spatial_ref.set_axis_mapping_strategy(0);
+        debug!("transform ...");
 
         let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
 
@@ -259,10 +269,10 @@ impl State {
         transform
             .transform_coords(&mut xs, &mut ys, &mut zs)
             .unwrap();
-        // println!(
-        //     "after transform: {}, {}, {}, {}",
-        //     ys[1], xs[0], ys[0], xs[1]
-        // );
+        debug!(
+            "after transform: {}, {}, {}, {}",
+            ys[1], xs[0], ys[0], xs[1]
+        );
         // lat_min, long_min, lat_max, long_max
         map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
         //map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
@@ -280,7 +290,7 @@ impl State {
                 vmax: None,
                 vmin: None,
             });
-            // println!("auto add map style: {:?}", map.style);
+            debug!("auto add map style: {:?}", map.style);
         }
         if map.style.is_none() && raster.raster_count() < 3 {
             let min_max = raster.min_max();
@@ -291,7 +301,7 @@ impl State {
                 vmin: Some(min_max[0].0),
                 vmax: Some(min_max[0].1),
             });
-            // println!("auto add map style: {:?}", map.style);
+            debug!("auto add map style: {:?}", map.style);
         }
 
         State::validate_no_data_values(&src, map)?;

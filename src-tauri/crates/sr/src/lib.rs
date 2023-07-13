@@ -29,7 +29,7 @@ impl SenseRemote {
         options: Vec<String>,
         mut callback: F,
         output_path: String,
-        _log_path: Option<String>,
+        log_path: Option<String>,
     ) -> Result<(), SenseRemoteError> {
         unsafe {
             callback(0.0, "loading-model".into());
@@ -42,9 +42,12 @@ impl SenseRemote {
             options_arr.push(std::ptr::null_mut());
 
             // create handle
-            // TODO: support log file
-            //let log_str = CString::new(log_path.unwrap_or_else(|_| String::from(""))).unwrap();
-            let handle = sr_init(0, options_arr.as_mut_ptr(), std::ptr::null());
+            
+            let log_str = match log_path {
+                Some(p) => CString::new(p).unwrap().as_ptr(),
+                None => std::ptr::null(),
+            };
+            let handle = sr_init(0, options_arr.as_mut_ptr(), log_str);
             if handle == std::ptr::null_mut() {
                 return Err(SenseRemoteError::Msg(String::from(
                     "SenseRemote create handle fail",
@@ -52,7 +55,7 @@ impl SenseRemote {
             }
 
             // post handle
-            let post_handle = sr_post_init(std::ptr::null());
+            let post_handle = sr_post_init(log_str);
             if post_handle == std::ptr::null_mut() {
                 return Err(SenseRemoteError::Msg(String::from(
                     "SenseRemote create post handle fail",
