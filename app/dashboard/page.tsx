@@ -175,7 +175,6 @@ export default function Home() {
   }
 
   const createPredictTask = () => {
-    // if mapLayers.data.layers.length == 0)
     setPredicting(true);
 
     const params = parsePredictionParameter();

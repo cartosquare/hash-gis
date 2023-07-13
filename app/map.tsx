@@ -52,7 +52,7 @@ export default function MapSquare() {
   }, [mapLayers.data.initialized])
 
   return (
-    <MapContainer className='flex grow' center={L.latLng(39.98, 116.31)} zoom={10}>
+    <MapContainer className='flex grow' center={L.latLng(39.98, 116.31)} zoom={10} attributionControl={false}>
       {
         mapLayers.data.layers.map((s, index) => mapLayers.data.visible[index] && (
           <TileLayer key={index}
