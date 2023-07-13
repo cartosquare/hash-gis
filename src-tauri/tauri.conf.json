@@ -30,7 +30,7 @@
         ]
       },
       "http": {
-        "all": false,
+        "all": true,
         "request": true,
         "scope": [
           "http://localhost:28904/*"
@@ -63,10 +63,8 @@
       },
       "resources": [
         "app_config.toml",
-        "*.dll",
         "mapnik",
-        "gdal",
-        "proj"
+        "gdal"
       ],
       "shortDescription": "",
       "targets": "all",
@@ -77,7 +75,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost"
+      "csp": "default-src 'self'; img-src * 'self' data: asset: https://asset.localhost"
     },
     "updater": {
       "active": false
@@ -87,7 +85,7 @@
         "fullscreen": false,
         "height": 800,
         "resizable": true,
-        "title": "HASH(GIS)",
+        "title": "HashGis",
         "width": 1200
       }
     ]
