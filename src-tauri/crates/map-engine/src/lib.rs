@@ -72,7 +72,6 @@ pub mod gdal;
 pub mod mercator;
 pub mod png;
 pub mod raster;
-pub mod vector;
 pub mod tiles;
 pub mod windows;
 

@@ -7,7 +7,6 @@ use map_engine::{
     gdal::Dataset,
     gdal::LayerAccess,
     raster::{Raster, SpatialInfo},
-    vector::{DataSource, Layer, Map, Parameter, Rule, StyleName, Vector, VectorSymbolizer, PolygonSymbolizer, LineSymbolizer},
     windows::Window,
 };
 use std::collections::HashMap;
@@ -25,9 +24,6 @@ pub struct State {
     pub maps: Arc<RwLock<HashMap<String, MapSettings>>>,
     pub rasters: Arc<RwLock<HashMap<String, Raster>>>,
     pub styles: Arc<RwLock<HashMap<String, Composite>>>,
-
-    // mapnik maps
-    pub vectors: Arc<RwLock<HashMap<String, Vector>>>,
 }
 
 impl State {
@@ -128,7 +124,6 @@ impl State {
         let mut maps = HashMap::new();
         let mut rasters = HashMap::new();
         let mut styles = HashMap::new();
-        let vectors = HashMap::new();
         for mut map in settings.into_iter() {
             let path = Path::new(&map.path);
             let src = Dataset::open(path)?;
@@ -221,7 +216,6 @@ impl State {
             maps: Arc::new(RwLock::new(maps)),
             rasters: Arc::new(RwLock::new(rasters)),
             styles: Arc::new(RwLock::new(styles)),
-            vectors: Arc::new(RwLock::new(vectors)),
         })
     }
 
@@ -333,112 +327,6 @@ impl State {
         Ok(map.clone())
     }
 
-    pub fn add_map_vector(&self, map_setting: MapSettings) -> Result<MapSettings, MapEngineError> {
-        let map: &mut MapSettings = &mut map_setting.clone();
-
-        // open data to fetch more info
-        let path = Path::new(&map.path);
-        let ds = Dataset::open(path)?;
-
-        let layer = ds.layer(0)?;
-        let spatial_ref = layer
-            .spatial_ref()
-            .unwrap_or_else(|| SpatialRef::from_epsg(4326).unwrap());
-        map.spatial_info = Some(SpatialInfo::from_spatial_ref(&spatial_ref));
-        let spatial_units = spatial_ref.linear_units_name()?;
-        map.spatial_units = Some(spatial_units);
-
-        let extent = layer.get_extent()?;
-        let minx = extent.MinX;
-        let maxx = extent.MaxX;
-        let maxy = extent.MaxY;
-        let miny = extent.MinY;
-        // println!("{}, {}, {}, {}", minx, maxx, miny, maxy);
-
-        let target_spatial_ref = SpatialRef::from_epsg(4326)?;
-        spatial_ref.set_axis_mapping_strategy(0);
-        target_spatial_ref.set_axis_mapping_strategy(0);
-        let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
-
-        let mut xs = [minx, maxx];
-        let mut ys = [maxy, miny];
-        let mut zs = [0.0f64; 2];
-        transform
-            .transform_coords(&mut xs, &mut ys, &mut zs)
-            .unwrap();
-        // println!(
-        //     "after transform: {}, {}, {}, {}",
-        //     ys[1], xs[0], ys[0], xs[1]
-        // );
-        // lat_min, long_min, lat_max, long_max
-        map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
-        // map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
-
-        // create map style
-        let colors = [
-            "#8e0152", "#c51b7d", "#de77ae", "#f1b6da", "#fde0ef", "#e6f5d0", "#b8e186", "#7fbc41",
-            "#4d9221", "#276419",
-        ];
-        let mut rng = rand::thread_rng();
-        let color_index = rng.gen_range(0..colors.len());
-
-        let m = Map {
-            srs: "epsg:3857".into(),
-            style: vec![map_engine::vector::Style {
-                name: "My Style".into(),
-                rule: vec![Rule {
-                    symbolizer: vec![
-                        VectorSymbolizer::Polygon(PolygonSymbolizer {
-                            fill: colors[color_index].into(),
-                            fill_opacity: 0.5,
-                        }),
-                        VectorSymbolizer::Line(LineSymbolizer {
-                            stroke: colors[color_index].into(),
-                            stroke_opacity: 1.0,
-                            stroke_width: 1.0,
-                        }),
-                    ],
-                }],
-            }],
-            layer: vec![Layer {
-                name: None,
-                srs: Some(spatial_ref.to_proj4()?),
-                style_name: StyleName {
-                    name: "My Style".into(),
-                },
-                data_source: DataSource {
-                    parameter: vec![
-                        Parameter {
-                            name: "file".into(),
-                            val: map.path.clone(),
-                        },
-                        Parameter {
-                            name: "layer_by_index".into(),
-                            val: "0".into(),
-                        },
-                        Parameter {
-                            name: "type".into(),
-                            val: "ogr".into(),
-                        },
-                    ],
-                },
-            }],
-        };
-
-        map.xml = Some(m.to_xml()?);
-        println!("xml: {:?}", map.xml);
-        let v = Vector::from(map.xml.clone().unwrap())?;
-        map.name = v.name.clone();
-
-        self.maps
-            .write()
-            .unwrap()
-            .insert(map.name.clone(), map.clone());
-        self.vectors.write().unwrap().insert(map.name.clone(), v);
-
-        Ok(map.clone())
-    }
-
     pub fn get_map(&self, map_name: &str) -> Result<MapSettings, MapEngineError> {
         if self.maps.read().unwrap().contains_key(map_name) {
             Ok(self
@@ -460,23 +348,6 @@ impl State {
         if self.maps.read().unwrap().contains_key(map_name) {
             Ok(self
                 .rasters
-                .read()
-                .unwrap()
-                .get(map_name)
-                .expect("State does not contain the raster")
-                .clone())
-        } else {
-            return Err(MapEngineError::Msg(format!(
-                "The raster {:?} does not exist",
-                map_name
-            )));
-        }
-    }
-
-    pub fn get_vector(&self, map_name: &str) -> Result<Vector, MapEngineError> {
-        if self.maps.read().unwrap().contains_key(map_name) {
-            Ok(self
-                .vectors
                 .read()
                 .unwrap()
                 .get(map_name)

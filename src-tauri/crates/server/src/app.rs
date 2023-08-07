@@ -4,7 +4,6 @@ use crate::{
 };
 
 use http_types::headers::HeaderValue;
-use map_engine::vector::Vector;
 use tide::security::{CorsMiddleware, Origin};
 use tide::{Request, Response, Server, StatusCode};
 
@@ -16,7 +15,6 @@ pub async fn run(
     font_dir: String,
     gdal_data: String,
 ) -> tide::Result<()> {
-    Vector::mapnik_register(plugin_dir, font_dir);
     map_engine::gdal::gdal_initialize(gdal_data);
 
     let cors = CorsMiddleware::new()

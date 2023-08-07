@@ -152,6 +152,7 @@ async fn main() -> tide::Result<()> {
 
     let host = env::var("MAP_ENGINE_HOST").unwrap_or_else(|_| String::from("127.0.0.1"));
     let port = env::var("MAP_ENGINE_PORT").unwrap_or_else(|_| String::from("8080"));
+    let gdal_data = env::var("GDAL_DATA").unwrap_or_else(|_| String::from(""));
 
     run(
         args.config,
@@ -159,6 +160,7 @@ async fn main() -> tide::Result<()> {
         port,
         env::var("MAPNIK_PLUGIN_DIR").unwrap(),
         env::var("MAPNIK_FONT_DIR").unwrap(),
+        gdal_data,
     )
     .await?;
 

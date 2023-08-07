@@ -17,14 +17,7 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
 
     // We already checked if the map exists, so it should be ok to unwrap
     let req_map = &req_map.unwrap();
-    if req_map.xml.is_some() {
-        let v = req.state().get_vector(map_name).unwrap();
-        let data = v.tile(&tile)?;
-        let response = Response::builder(StatusCode::Ok)
-            .content_type(mime::PNG)
-            .body(data);
-        Ok(response)
-    } else {
+
         let raster = req.state().get_raster(map_name).unwrap();
         let style_gradient = req.state().get_style(map_name).unwrap();
 
@@ -56,7 +49,6 @@ pub async fn get_tile(req: Request<State>) -> tide::Result<impl Into<Response>> 
             .content_type(mime::PNG)
             .body(styled.into_png().expect("Could not create PNG"));
         Ok(response)
-    }
 }
 
 pub async fn get_params(req: &Request<State>) -> tide::Result<(&str, u32, u32, u32, &str)> {

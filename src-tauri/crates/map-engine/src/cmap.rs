@@ -342,7 +342,7 @@ fn rgb_handle(comp: &Composite, values: &[f64], no_data_values: Option<&[f64]>) 
         if no_data_values
             .iter()
             .zip(values)
-            .any(|(ndv, v)| (v - ndv).abs() < f64::EPSILON)
+            .all(|(ndv, v)| (v - ndv).abs() < f64::EPSILON)
         {
             0u8
         } else {
