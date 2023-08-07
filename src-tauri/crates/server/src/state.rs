@@ -163,7 +163,19 @@ impl State {
             spatial_ref.set_axis_mapping_strategy(0);
             target_spatial_ref.set_axis_mapping_strategy(0);
             let transform = CoordTransform::new(&spatial_ref, &target_spatial_ref)?;
-            map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+            // map.bounds = Some(transform.transform_bounds(&[minx, miny, maxx, maxy], 21)?);
+            let mut xs = [minx, maxx];
+            let mut ys = [maxy, miny];
+            let mut zs = [0.0f64; 2];
+            transform
+                .transform_coords(&mut xs, &mut ys, &mut zs)
+                .unwrap();
+            debug!(
+                "after transform: {}, {}, {}, {}",
+                ys[1], xs[0], ys[0], xs[1]
+            );
+            // lat_min, long_min, lat_max, long_max
+            map.bounds = Some([ys[1], xs[0], ys[0], xs[1]]);
 
             // calculate band min/max
             if map.style.is_none() && raster.raster_count() >= 3 {
@@ -283,7 +295,7 @@ impl State {
             map.style = Some(Style {
                 name: None,
                 colours: Some(ColourDefinition::RGB(
-                    [min_max[0].0, min_max[0].0, min_max[2].0],
+                    [min_max[0].0, min_max[1].0, min_max[2].0],
                     [min_max[0].1, min_max[1].1, min_max[2].1],
                 )),
                 bands: Some([1, 2, 3].to_vec()),
